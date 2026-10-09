@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XCPETS Pet Generator</title>
+<link rel="icon" href="img/logo.png">
+<style>
+  :root { --bg:#0e0b16; --panel:#181327; --ink:#ece6ff; --dim:#9a90b8; --acc:#ff7a1a; --line:#2c2440; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px; font-size: 26px; } h1 span { color: var(--acc); }
+  p.sub { color: var(--dim); margin: 0 0 20px; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border:1px solid var(--line); border-radius: 12px; padding: 16px; }
+  label { display:block; color: var(--dim); font-size: 12px; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .05em; }
+  input, select { width:100%; background:#0b0912; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; }
+  .row { display:flex; gap: 8px; } .row > * { flex: 1; }
+  button { background: var(--acc); color:#140a00; border:0; border-radius:8px; padding:9px 14px; font:inherit; font-weight:700; cursor:pointer; margin-top: 12px; }
+  button.ghost { background: transparent; color: var(--ink); border:1px solid var(--line); }
+  canvas { width: 100%; max-width: 384px; aspect-ratio: 1; image-rendering: pixelated; border-radius: 10px; display:block; margin: 0 auto; border:1px solid var(--line); }
+  table { width:100%; border-collapse: collapse; margin-top: 12px; } td { padding: 3px 0; border-bottom: 1px dashed var(--line); } td:first-child { color: var(--dim); width: 40%; }
+  .tier { display:inline-block; padding: 2px 10px; border-radius: 99px; font-weight:700; color:#120d1c; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--dim); background:#0b0912; padding: 10px; border-radius: 8px; max-height: 220px; overflow:auto; }
+  .chk { display:flex; gap:8px; align-items:center; text-transform:none; letter-spacing:0; font-size:13px; color: var(--ink); margin-top: 12px; }
+  .chk input { width:auto; }
+  .strip { display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top: 10px; }
+  .strip div { text-align:center; font-size:10px; color: var(--dim); cursor:pointer; }
+  .strip canvas { width:100%; aspect-ratio:1; border-radius:6px; border:1px solid var(--line); }
+  .strip .on canvas { border-color: var(--acc); }
+  .small { font-size: 12px; }
+  .msg { color: var(--dim); font-size: 13px; min-height: 1.5em; } .err { color: #ff6b6b; }
+  a { color: var(--acc); }
+</style>
+</head>
+<body>
+<main>
+  <h1><span>XCPETS</span> pet generator</h1>
+  <p class="sub">Block hash (+ optional pet id / hatch tx hash) → SHA-256 → sfc32 PRNG → traits → 32×32 pixels. Deterministic: anyone can re-derive any pet. Same generation rules as the XCPETS CLI: every seed gives the same pet, pixel for pixel.</p>
+  <div class="grid">
+    <section class="panel">
+      <label for="hash">Block hash</label>
+      <input id="hash" placeholder="64 hex chars" value="00000000000000000001d62038106eb14d0843d95b5f19a878cb3a144eec8c27">
+      <div class="row">
+        <div><label for="blockIdx">Block index</label><input id="blockIdx" placeholder="e.g. 970568"></div>
+        <div style="display:flex;gap:6px;align-items:end"><button id="fetchBlock" class="ghost">Fetch</button><button id="latest" class="ghost">Latest</button></div>
+      </div>
+      <label for="petId">Pet id / hatch tx hash (optional)</label>
+      <input id="petId" placeholder="tx hash of the pet:hatch burn" value="04a7b98fde5308854f0bef057df64fcdb7405f9236932b315577d1b98ddd5fb3">
+      <div class="row">
+        <div><label for="stage">Stage (expression + gear)</label><select id="stage"></select></div>
+        <div><label for="care">Care (tokens burned into pet)</label><input id="care" type="number" min="0" value="0"></div>
+      </div>
+      <div class="row">
+        <div><label for="speciesSel">Species</label><select id="speciesSel"><option value="">Rolled from seed</option></select></div>
+        <div><label for="tierSel">Tier</label><select id="tierSel"><option value="">Rolled from seed</option></select></div>
+      </div>
+      <p class="msg small">Species/Tier overrides are previews only. Real pets always use the rolled values.</p>
+      <button id="go">Generate</button> <button id="random" class="ghost">Random seed</button> <button id="dl" class="ghost">Download PNG</button>
+      <p class="msg" id="msg"></p>
+      <pre id="json"></pre>
+    </section>
+    <section class="panel">
+      <canvas id="cv" width="32" height="32"></canvas>
+      <p style="text-align:center;margin:10px 0 0"><b id="petName"></b> <span class="tier" id="tier"></span></p>
+      <div id="strip" class="strip"></div>
+      <table id="traits"></table>
+      <table id="stats"></table>
+      <p class="msg">pixel hash: <span id="pixelhash" data-pixelhash=""></span></p>
+    </section>
+  </div>
+  <p class="sub" style="margin-top:20px">API: <code>https://api.xcp.fun/node/v2/blocks/&lt;index&gt;</code> · <a href="index.html">XCPETS home</a></p>
+</main>
+<script src="js/pet-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var API = 'https://api.xcp.fun/node/v2';
+  var $ = function (id) { return document.getElementById(id); };
+  var cv = $('cv'), ctx = cv.getContext('2d'), frames = [], f = 0, timer = null, current = null;
+  PetCore.STAGES.forEach(function (s, i) { var o = document.createElement('option'); o.value = i; o.textContent = i + ' · ' + s + (i ? ' (gear rank ' + i + ': ' + PetCore.GEAR_RANKS[i - 1] + ')' : ''); if (i === 3) o.selected = true; $('stage').appendChild(o); });
+  PetCore.SPECIES.forEach(function (sp) { var o = document.createElement('option'); o.value = sp.id; o.textContent = sp.label + (sp.tw ? ' (any tier)' : ' (from ' + PetCore.TIERS[sp.t].label + ')'); $('speciesSel').appendChild(o); });
+  PetCore.TIERS.forEach(function (t) { var o = document.createElement('option'); o.value = t.id; o.textContent = t.label + ' (' + t.gearSlots + ' gear slots)'; $('tierSel').appendChild(o); });
+
+  var q = new URLSearchParams(location.search);
+  if (q.get('hash')) $('hash').value = q.get('hash');
+  if (q.has('id')) $('petId').value = q.get('id');
+  if (q.get('stage')) $('stage').value = q.get('stage');
+  if (q.get('care')) $('care').value = q.get('care');
+  if (q.get('species')) $('speciesSel').value = q.get('species');
+  if (q.get('tier')) $('tierSel').value = q.get('tier');
+
+  function msg(t, err) { $('msg').textContent = t || ''; $('msg').className = 'msg' + (err ? ' err' : ''); }
+  function draw(img) { ctx.putImageData(new ImageData(new Uint8ClampedArray(img.data), 32, 32), 0, 0); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+  function gen() {
+    var stage = parseInt($('stage').value, 10), care = Number($('care').value) || 0;
+    var ov = {};
+    if ($('speciesSel').value) ov.species = $('speciesSel').value;
+    if ($('tierSel').value) ov.tier = $('tierSel').value;
+    var pet = PetCore.generate({ blockHash: $('hash').value, petId: $('petId').value, overrides: Object.keys(ov).length ? ov : undefined });
+    current = pet;
+    var sb = $('strip'); sb.innerHTML = '';
+    PetCore.STAGES.forEach(function (name, si) {
+      var d = document.createElement('div'); if (si === stage) d.className = 'on';
+      var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'pixel';
+      c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(PetCore.render(pet, { stage: si }).data), 32, 32), 0, 0);
+      d.appendChild(c); d.appendChild(document.createElement('br')); d.appendChild(document.createTextNode(name));
+      d.onclick = function () { $('stage').value = si; gen(); };
+      sb.appendChild(d);
+    });
+    frames = PetCore.renderFrames(pet, { stage: stage });
+    f = 0; draw(frames[0]);
+    if (timer) clearInterval(timer);
+    timer = setInterval(function () { f = (f + 1) % frames.length; draw(frames[f]); }, 260);
+    var tier = PetCore.TIERS[pet.tierIndex];
+    $('petName').textContent = pet.defaultName + ' · ' + PetCore.STAGES[stage];
+    $('tier').textContent = tier.label; $('tier').style.background = tier.color;
+    var d = PetCore.describe(pet, stage), h = '';
+    Object.keys(d).forEach(function (k) { h += '<tr><td>' + k + '</td><td>' + esc(d[k]) + '</td></tr>'; });
+    h += '<tr><td>DNA</td><td>' + pet.dna.slice(0, 16) + '…</td></tr>';
+    $('traits').innerHTML = h;
+    var st = PetCore.stats(pet, stage, care); h = '';
+    Object.keys(st).forEach(function (k) { h += '<tr><td>' + k + '</td><td>' + st[k] + '</td></tr>'; });
+    $('stats').innerHTML = h;
+    var ph = PetCore.pixelHash(frames[0]);
+    $('pixelhash').textContent = ph.slice(0, 16) + '…'; $('pixelhash').setAttribute('data-pixelhash', ph);
+    $('pixelhash').setAttribute('data-dna', pet.dna); $('pixelhash').setAttribute('data-tier', pet.tier);
+    $('json').textContent = JSON.stringify(pet, null, 1);
+  }
+
+  function fetchBlock(which) {
+    msg('fetching block ' + which + '…');
+    fetch(API + '/blocks/' + which).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        if (!j.result || !j.result.block_hash) throw new Error('unexpected response');
+        $('hash').value = j.result.block_hash; $('blockIdx').value = j.result.block_index;
+        msg('block ' + j.result.block_index + ' loaded'); gen();
+      }).catch(function (e) { msg('could not fetch block: ' + e.message, true); });
+  }
+
+  $('go').onclick = gen;
+  $('stage').onchange = gen; $('speciesSel').onchange = gen; $('tierSel').onchange = gen; $('care').oninput = gen;
+  $('fetchBlock').onclick = function () { var i = parseInt($('blockIdx').value, 10); if (i >= 0) fetchBlock(i); else msg('enter a block index', true); };
+  $('latest').onclick = function () { fetchBlock('last'); };
+  $('random').onclick = function () {
+    var b = new Uint8Array(32); crypto.getRandomValues(b);
+    $('hash').value = Array.prototype.map.call(b, function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
+    $('petId').value = ''; gen();
+  };
+  $('dl').onclick = function () {
+    if (!current) return;
+    var big = document.createElement('canvas'); big.width = big.height = 512;
+    var g = big.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(cv, 0, 0, 512, 512);
+    var a = document.createElement('a'); a.download = 'xcpet_' + current.dna.slice(0, 12) + '.png'; a.href = big.toDataURL('image/png'); a.click();
+  };
+  gen();
+})();
+</script>
+</body>
+</html>

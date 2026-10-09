@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XCPETS — 8-bit meme pets, rolled from Bitcoin blocks</title>
+<meta name="description" content="XCPETS: twelve 8-bit meme characters, each pet rolled deterministically from a Bitcoin block hash. Try the pet generator. Not launched yet.">
+<meta property="og:title" content="XCPETS — 8-bit meme pets">
+<meta property="og:description" content="Twelve 8-bit meme characters, rolled from Bitcoin block hashes. Six stages, four rarity tiers, stacking gear.">
+<meta property="og:image" content="img/cast.png">
+<meta name="robots" content="noindex">
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="#top"><img src="img/logo.png" alt="XCPETS logo: a pixel Pepe pet" width="28" height="28"> XCPETS</a>
+  <nav>
+    <a href="#how">How it works</a><a href="#cast">The cast</a><a href="#gallery">Gallery</a><a href="generator.html">Generator</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-pets" id="heroPets" aria-label="Animated XCPETS pets"></div>
+    <div class="hero-copy">
+      <h1><span>XCPETS</span></h1>
+      <p class="tagline">8-bit meme pets, rolled from Bitcoin blocks.</p>
+      <p class="lede">Twelve pixel meme characters: Pepe, Wojak, Chud, Bobo, Mumu, Snibby, Dodo, KEVIN, Peepo, Sarutobi, Doge and Lenny. Every pet is derived from a block hash (plus a pet id), so anyone can re-derive any pet and get exactly the same pixels.</p>
+      <div class="cta">
+        <a class="btn" href="generator.html">Open the generator</a>
+        <a class="btn ghost" href="#cast">Meet the cast</a>
+      </div>
+      <p class="muted small">A Counterparty meme/game token proposal. Not launched: nothing to buy here.</p>
+    </div>
+  </section>
+
+  <section id="how" class="panel">
+    <h2>How it works</h2>
+    <div class="facts">
+      <div><b>Seeded by Bitcoin</b><span class="muted small">Block hash + pet id → SHA-256 → sfc32 PRNG → traits → 32×32 pixels. Fully deterministic.</span></div>
+      <div><b>Four rarity tiers</b><span class="muted small">Common 60% · Uncommon 27% · Rare 10% · Legendary 3%. Rarer tiers unlock rarer species, palettes and gear.</span></div>
+      <div><b>Six stages</b><span class="muted small">Egg → Hatchling → Juvenile → Adult → Elder → Mythic. Each stage changes the expression and adds a gear rank.</span></div>
+      <div><b>Stacking gear</b><span class="muted small">Headband/scarf, armor, cape, weapon, crown. Tier caps the slots: Common 0, Uncommon 2, Rare 4, Legendary 5.</span></div>
+    </div>
+  </section>
+
+  <section id="cast" class="panel">
+    <h2>The cast</h2>
+    <p class="muted">Pets hatch as one of twelve 8-bit meme characters. Pick a tier to see how much gear a pet can wear.</p>
+    <div class="tabs" id="castTiers"></div>
+    <div class="cast" id="castRows"></div>
+  </section>
+
+  <section id="gallery" class="panel">
+    <h2>Pixel gallery</h2>
+    <p class="muted">Random examples rolled by the generator from a real block hash, shown at different stages. Hit reroll for a fresh batch, or try your own in the <a href="generator.html">generator</a>.</p>
+    <button class="btn ghost" id="reroll" type="button">Reroll</button>
+    <div class="cards" id="galleryCards"></div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="generator.html">Pet generator</a> · <a href="#cast">The cast</a></p>
+  <p class="muted small">XCPETS is a meme/game token proposal. Not launched. No promise of value, not financial advice. Character art is fan-made pixel homage.</p>
+</footer>
+
+<script src="js/pet-core.js"></script>
+<script src="js/promo.js"></script>
+</body>
+</html>
