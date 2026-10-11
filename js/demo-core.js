@@ -1,7 +1,7 @@
 /* XCPETS PLAY DEMO core. PLAY MONEY ONLY: nothing here touches a chain, a wallet or real XCPETS.
  * The demo keeps a list of fake destroy rows (same shape as Counterparty API v2 rows, with pet: tags) and replays them
  * through the REAL GameCore.buildState (with the demo's cost/threshold config), so hatching, care, stages and the Mythic
- * evolve rule are the real game's code. Pet art comes from the REAL PetCore.generate(fake block hash, fake tx hash).
+ * evolve rule are the real game's code. Pet art comes from PetCore.generate(fake block hash, fake tx hash); the promo build's copy locks each species to one tier.
  * Demo-only extra: gear is LOOT. Stages unlock slots; items drop rarely and are equipped by the player. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory;

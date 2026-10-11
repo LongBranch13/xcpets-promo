@@ -1,6 +1,6 @@
 # XCPETS Play Demo: How It Works
 
-Everything in the demo uses play XCPETS: fake money saved in your browser. It isn't real XCPETS and nothing goes on-chain. The pets and art come from the real game's generator, and stages, care and evolving run on the real game's rules code. The costs are the demo's own, much cheaper than the real game, and gear rolling, tokens and Slot Keys are demo-only.
+Everything in the demo uses play XCPETS: fake money saved in your browser. It isn't real XCPETS and nothing goes on-chain. The pets and art come from the real game's generator, except that the demo locks each species to one rarity tier, so species odds differ from the real game (see section 1). Stages, care and evolving run on the real game's rules code. The costs are the demo's own, much cheaper than the real game, and gear rolling, tokens and Slot Keys are demo-only.
 
 ## Your play wallet
 - You start with 69,000 play XCPETS, exactly enough to raise one pet from Egg to Mythic.
@@ -8,7 +8,7 @@ Everything in the demo uses play XCPETS: fake money saved in your browser. It is
 - **Reset demo** wipes your wallet, pets and gear and starts over.
 
 ## Hatching
-- Hatching costs **69** play XCPETS. Each hatch rolls a brand-new pet from a random fake block hash and burn id, using the real game's generator.
+- Hatching costs **69** play XCPETS. Each hatch rolls a brand-new pet from a random fake block hash and burn id, using the game's generator (with the demo's species-tier lock).
 - The reveal shows your pet's species and rarity, e.g. "It's a Rare Doge!"
 - **Hatch Again** rolls another pet right away, so you can reroll cheaply for Rare and Legendary pets.
 - **Release** deletes a pet you don't want. There's no refund, and its gear goes back to your inventory.
