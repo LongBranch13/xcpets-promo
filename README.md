@@ -28,7 +28,7 @@ Everything in the demo uses play XCPETS: fake money saved in your browser. It is
 - **My pets** shows 12 pets per page, with a rarity filter and a sort (newest, rarest, highest stage), so big batches stay fast. Your save stores each pet's seed, not images: 3 cases (432 pets) take about 136 KB of browser storage.
 
 ### Species (12)
-Pepe, Wojak, Chud, Bobo, Mumu, Snibby, Dodo, KEVIN, Peepo, Sarutobi, Doge and Lenny. Pepe and Wojak are the most common (about 21.7% each). Dodo is the rarest, at about 1 in 106 (0.94%), and only Legendary pets can be Dodos. Full odds are in the reference below.
+Pepe, Wojak, Chud, Bobo, Mumu, Snibby, Dodo, KEVIN, Peepo, Sarutobi, Doge and Lenny. **Each species belongs to exactly one rarity tier**: Common is Pepe, Wojak, Chud and Peepo; Uncommon is Bobo, Mumu and Doge; Rare is Snibby, Sarutobi and Lenny; Legendary is Dodo and KEVIN. The pet's tier is rolled first, then a species from that tier. Pepe and Wojak are the most common (about 19% each). KEVIN is the rarest (1%), then Dodo (2%). Full odds are in the reference below.
 
 ### Rarity tiers
 | Tier | Chance |
@@ -38,7 +38,7 @@ Pepe, Wojak, Chud, Bobo, Mumu, Snibby, Dodo, KEVIN, Peepo, Sarutobi, Doge and Le
 | Rare | 10% |
 | Legendary | 3% |
 
-Rarity decides which palettes, patterns, eyes and backgrounds your pet can roll, and how fancy they can be. Some species also need a minimum rarity.
+Rarity decides which palettes, patterns, eyes and backgrounds your pet can roll, and how fancy they can be. It also decides the species: each species lives in exactly one tier.
 
 ## Stages: Egg to Mythic
 Every pet grows through six stages: **Egg, Hatchling, Juvenile, Adult, Elder, Mythic**. From Hatchling on, each stage changes its expression and unlocks a new gear slot. A minimum hatch skips the Egg and lands on Hatchling.
@@ -110,18 +110,20 @@ All your pets in this browser are ranked in one list, with **WAGMI** at the top 
 
 1. **Pets on a streak** come first, by streak score. A streak counts consecutive days with at least one feed. It ends today, or yesterday if you haven't fed the pet yet today. Each fed day is worth 1, and a full 3/3 day is worth 1.5.
 2. **Neutral pets** come next: no streak, but not neglected yet.
-3. **Neglected pets** (2 or more calendar days since the last meal) come last, sorted by days since the last meal, so the most neglected pet is dead last. One feed clears neglect.
+3. **Neglected pets** (at least one full calendar day missed since the last meal) come last, sorted by days missed, so the most neglected pet is dead last. One feed clears neglect.
 
 With more than 20 pets, the list shows the top 10 and bottom 10, with a **Show all** toggle.
 
 | Badge | Earned by |
 |---|---|
-| Legendary drip | A Legendary pet, or 3+ Rare/Legendary gear items equipped |
-| Fire takes | A streak of 7+ days |
-| Roast mode | A streak of 3+ days. The pet roasts the lowest-ranked other pet in this browser by name (the line rotates daily) |
-| Shitpost encounters | 2 days since the last meal, with a daily flavor line such as "found a suspicious hat", "argued with a pigeon" or "declared itself a final boss" |
-| Flop era | 3 to 6 days since the last meal |
-| Cursed tweet thread | 7+ days since the last meal |
+| Fire takes | A streak of 3+ days |
+| Roast mode | A streak of 7+ days. The pet roasts one of the bottom 3 other pets in this browser by name (target and line rotate daily) |
+| Legendary drip | A streak of 14+ days. The row gets a gold glow |
+| Cursed tweet thread | 1 to 2 full days missed since the last meal |
+| Flop era | 3 to 6 days missed |
+| Shitpost encounters | 7+ days missed, with a daily flavor line such as "found a suspicious hat", "argued with a pigeon" or "declared itself a final boss" |
+
+"Days missed" counts whole calendar days with no meal since the last one, so a pet fed yesterday has missed 0 and is still on its streak. A long streak earns all the streak badges it qualifies for.
 
 ## The shared community pet
 There's also a mystery community pet that everyone grows together. Nobody knows what it is yet. Every play burn helps it grow, including hatches, feeds and rolls, and **Feed the shared pet** sends play XCPETS straight to it. It grows three times slower than a personal pet: 41,400 per stage, 207,000 total to Mythic. In the demo, its progress is saved in your browser only.
@@ -132,26 +134,28 @@ There's also a mystery community pet that everyone grows together. Nobody knows 
 
 Everything below comes straight from the promo's `js/pet-core.js` (version `3.14.0-promo`), `js/demo-core.js` and `js/bonus-gear.js`. Percentages are computed from the weight tables in the code and rounded to two decimals. "Overall" means across all hatches, using the tier odds (Common 60%, Uncommon 27%, Rare 10%, Legendary 3%).
 
-**How rolls work.** Each pet is rolled from a SHA-256 hash of its (fake) block hash and burn id. The rarity tier is rolled first, then each trait. An item can only roll at tiers at or above its own minimum tier. Items whose minimum tier equals the pet's tier get 4x weight, and the Classic palette always gets 4x. KEVIN, Peepo, Sarutobi, Doge and Lenny use fixed per-tier weights instead.
+**How rolls work.** Each pet is rolled from a SHA-256 hash of its (fake) block hash and burn id. The rarity tier is rolled first, then each trait. An item can only roll at tiers at or above its own minimum tier. Items whose minimum tier equals the pet's tier get 4x weight, and the Classic palette always gets 4x. Species are the exception: each one rolls only in its home tier (see section 1).
 
 ## 1. Species
 
+In the play demo each species rolls **only in its home tier**, so every column below has one non-blank cell. Within a tier, species are picked by their base weight (Pepe/Wojak 12, Chud 8, Bobo/Mumu/Snibby/Dodo 10, Peepo/Doge 6, Sarutobi/Lenny/KEVIN 5). This lock is promo-demo only; the real game's generator is unchanged.
+
 | Species | Look (from the code comments) | Common | Uncommon | Rare | Legendary | Overall |
 |---|---|---|---|---|---|---|
-| Pepe | Classic green frog: green body, blue accent, red-brown secondary colour | 30.00% | 8.63% | 10.43% | 9.38% | 21.66% |
-| Wojak | Tall oval bald head with forehead creases, eyes at mid-height looking aside, white eyes with an ink upper lid | 30.00% | 8.63% | 10.43% | 9.38% | 21.66% |
-| Chud | Wojak's head with a full dark-brown beard, near-black hair with a straight fringe, a level gaze behind always-on clear eyeglasses | 20.00% | 5.76% | 6.96% | 6.25% | 14.44% |
-| Bobo | Bitcoin-Stamp-style bear: big square head, round ears, dark muzzle and black nose, heavy half-lidded smug eyes, red shirt | n/a | 28.78% | 8.70% | 7.81% | 8.87% |
-| Mumu | Burnt-orange bull: white blaze with a spiky tuft, wide peach snout, heavy smug lids, cream horns, green shirt | n/a | 28.78% | 8.70% | 7.81% | 8.87% |
-| Snibby | Yellow blob crab: two tall eyestalks, wide duck-bill grin with orange lips, raised orange pincers, stubby legs | n/a | n/a | 34.78% | 7.81% | 3.71% |
-| Dodo | Black swan in side view: S-curve neck, round head, spiky back feathers, long red wedge beak, one side-profile eye | n/a | n/a | n/a | 31.25% | 0.94% |
-| KEVIN | Grey jaw-length helmet of hair, long tan face, narrow green slit eyes under flat black brows, pale-blue shirt | 3.75% | 3.60% | 3.48% | 3.91% | 3.69% |
-| Peepo | Wide round green head peeking up over a bright-blue shirt band, big glossy eyes, wide open mouth with brown lips and pink tongue | 4.38% | 4.32% | 4.35% | 3.91% | 4.34% |
-| Sarutobi | The 8-bit SaruTobi monkey: brown body, big round tan face disc, two tall black oval eyes, round ears, curly tail | 3.75% | 3.60% | 3.48% | 3.91% | 3.69% |
-| Doge | Kabosu-style Shiba: orange-tan fur, cream muzzle and chest, pale eyebrow dots, upright ears, the side-eye, seated | 4.38% | 4.32% | 4.35% | 4.69% | 4.37% |
-| Lenny | Round warm-yellow Lenny face: raised arched brows over small ring eyes, sideways hook nose, smirk, tiny body | 3.75% | 3.60% | 4.35% | 3.91% | 3.77% |
+| Pepe | Classic green frog: green body, blue accent, red-brown secondary colour | 37.50% | - | - | - | 22.50% |
+| Wojak | Tall oval bald head with forehead creases, eyes at mid-height looking aside, white eyes with an ink upper lid | 37.50% | - | - | - | 22.50% |
+| Chud | Wojak's head with a full dark-brown beard, near-black hair with a straight fringe, a level gaze behind always-on clear eyeglasses | 25.00% | - | - | - | 15.00% |
+| Peepo | Wide round green head peeking up over a bright-blue shirt band, big glossy eyes, wide open mouth with brown lips and pink tongue | 18.75% | - | - | - | 11.25% |
+| Bobo | Bitcoin-Stamp-style bear: big square head, round ears, dark muzzle and black nose, heavy half-lidded smug eyes, red shirt | - | 38.46% | - | - | 10.38% |
+| Mumu | Burnt-orange bull: white blaze with a spiky tuft, wide peach snout, heavy smug lids, cream horns, green shirt | - | 38.46% | - | - | 10.38% |
+| Doge | Kabosu-style Shiba: orange-tan fur, cream muzzle and chest, pale eyebrow dots, upright ears, the side-eye, seated | - | 23.08% | - | - | 6.23% |
+| Snibby | Yellow blob crab: two tall eyestalks, wide duck-bill grin with orange lips, raised orange pincers, stubby legs | - | - | 50.00% | - | 5.00% |
+| Sarutobi | The 8-bit SaruTobi monkey: brown body, big round tan face disc, two tall black oval eyes, round ears, curly tail | - | - | 25.00% | - | 2.50% |
+| Lenny | Round warm-yellow Lenny face: raised arched brows over small ring eyes, sideways hook nose, smirk, tiny body | - | - | 25.00% | - | 2.50% |
+| Dodo | Black swan in side view: S-curve neck, round head, spiky back feathers, long red wedge beak, one side-profile eye | - | - | - | 66.67% | 2.00% |
+| KEVIN | Grey jaw-length helmet of hair, long tan face, narrow green slit eyes under flat black brows, pale-blue shirt | - | - | - | 33.33% | 1.00% |
 
-"n/a" = can't roll at that tier: Bobo and Mumu need Uncommon or better, Snibby Rare or better, Dodo Legendary. Each column adds up to 100%. So Dodo is about 1 in 106 hatches, and only Legendary pets can be Dodos.
+Each tier column adds up to 100%. Dodo is 1 in 50 hatches and KEVIN 1 in 100, both Legendary only.
 
 KEVIN, Peepo, Sarutobi, Doge and Lenny have their own coloured eggs. The other species use the shared egg drawn in the pet's palette.
 

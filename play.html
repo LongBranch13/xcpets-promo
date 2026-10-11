@@ -48,6 +48,7 @@ select.pick { background:#0b0912; color:var(--ink); border:1px solid var(--line)
 .board { width:100%; border-collapse:collapse; font-size:13px; } .board td { padding:4px 6px; border-top:1px solid var(--line); vertical-align:top; }
 .board .end td { color: var(--acc); font-weight:700; letter-spacing:1px; border-top:0; } .badge { display:inline-block; font-size:11px; border-radius:10px; padding:1px 7px; margin:1px 2px; background:#2a2140; }
 .badge.good { background:#3b2a10; color:#ffc93c; } .badge.bad { background:#2a1620; color:#ff7a9a; } .board .gap td { text-align:center; color:var(--muted); }
+.board tr.drip td { background: rgba(255,201,60,.08); box-shadow: inset 0 0 12px rgba(255,201,60,.35); } .board tr.drip b { color:#ffc93c; text-shadow:0 0 6px #ffc93c; }
 .hunger { height:6px; border-radius:4px; background:#2a2140; overflow:hidden; margin:3px 0; } .hunger i { display:block; height:100%; background:linear-gradient(90deg,#ff4d4d,#ffc93c,#4fd18b); }
 .reveal .box { background: var(--panel); border:1px solid var(--line); border-radius: 18px; padding: 22px; text-align:center; max-width: 380px; width:100%; }
 .reveal canvas { width: 240px; height: 240px; margin: 8px auto; }
@@ -116,7 +117,7 @@ table.log code { font-size: 12px; }
 
   <section class="panel" id="boardPanel">
     <h2>WAGMI to NGMI <span class="muted small">(one power ranking of your pets in this browser; cosmetic only)</span></h2>
-    <p class="muted small">Top = WAGMI: pets on a feeding streak, by streak score (each consecutive fed day = 1, a full 3/3 day = 1.5). Middle: pets with no streak yet. Bottom = NGMI: neglected pets (2+ days since the last meal), the most neglected dead last. One feed clears neglect.</p>
+    <p class="muted small">Top = WAGMI: pets on a feeding streak, by streak score (each consecutive fed day = 1, a full 3/3 day = 1.5). Middle: pets with no streak yet. Bottom = NGMI: neglected pets (a full day or more missed since the last meal), the most neglected dead last. One feed clears neglect.</p>
     <div id="board"></div>
     <button class="q" id="boardAll" style="display:none"></button>
   </section>

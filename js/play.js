@@ -158,12 +158,13 @@
   }
   $('hatch').onclick = doHatch;
   var boardAll = false, GOOD = { 'Legendary drip': 1, 'Fire takes': 1, 'Roast mode': 1 };
+  function glow(r) { return r.badges.indexOf('Legendary drip') >= 0 ? ' class="drip"' : ''; }
   function renderBoard(st) {
     var rows = demo.leaderboard(st), show = rows, cut = !boardAll && rows.length > 20;
     if (cut) show = rows.slice(0, 10).concat([null], rows.slice(-10));
     function row(r) {
-      var s = r.status, info = s.kind === 'streak' ? s.streakDays + '-day streak (score ' + s.score + ')' : s.kind === 'neglected' ? s.daysSince + ' days since last meal' : 'no streak yet';
-      return '<tr><td>#' + r.rank + '</td><td><b>' + esc(r.name) + '</b> <span class="muted">#' + r.id + ' · ' + esc(speciesLabel(r.species)) + ' · ' + PetCore.TIERS[r.tier].label + ' · ' + r.stage + '</span>' +
+      var s = r.status, info = s.kind === 'streak' ? s.streakDays + '-day streak (score ' + s.score + ')' : s.kind === 'neglected' ? s.missed + ' day' + (s.missed > 1 ? 's' : '') + ' missed' : 'no streak yet';
+      return '<tr' + glow(r) + '><td>#' + r.rank + '</td><td><b>' + esc(r.name) + '</b> <span class="muted">#' + r.id + ' · ' + esc(speciesLabel(r.species)) + ' · ' + PetCore.TIERS[r.tier].label + ' · ' + r.stage + '</span>' +
         (r.flavor ? '<div class="small muted">' + esc(r.flavor) + '</div>' : '') + (r.roast ? '<div class="small">🔥 ' + esc(r.roast) + '</div>' : '') + '</td><td>' + info + '</td><td>' +
         r.badges.map(function (b) { return '<span class="badge ' + (GOOD[b] ? 'good' : 'bad') + '" title="' + esc(DemoCore.BADGES[b]) + '">' + b + '</span>'; }).join('') + '</td></tr>';
     }

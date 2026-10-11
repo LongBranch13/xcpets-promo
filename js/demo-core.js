@@ -287,13 +287,14 @@
       if (!log[k]) break;
       days++; score += log[k] >= FEEDS_PER_DAY ? 1.5 : 1;
     }
-    var since = dayDiff(now, last), kind = days > 0 ? 'streak' : (since >= 2 ? 'neglected' : 'neutral');
-    return { streakDays: days, score: score, daysSince: since, lastFed: last, kind: kind, hunger: Math.max(0, Math.min(1, 1 - (now - last) / DAY)) };
+    // missed = full calendar days with no meal since the last one (fed yesterday = 0 missed); neglected from 1 missed day
+    var since = dayDiff(now, last), missed = Math.max(0, since - 1), kind = days > 0 ? 'streak' : (missed >= 1 ? 'neglected' : 'neutral');
+    return { streakDays: days, score: score, daysSince: since, missed: missed, lastFed: last, kind: kind, hunger: Math.max(0, Math.min(1, 1 - (now - last) / DAY)) };
   };
   Demo.BADGES = {
-    'Legendary drip': 'Legendary pet, or 3+ Rare/Legendary gear items equipped',
-    'Fire takes': 'streak of 7+ days', 'Roast mode': 'streak of 3+ days (roasts another pet in this browser by name)',
-    'Shitpost encounters': '2 days since the last meal', 'Flop era': '3-6 days since the last meal', 'Cursed tweet thread': '7+ days since the last meal'
+    'Fire takes': 'streak of 3+ days', 'Roast mode': 'streak of 7+ days (roasts a bottom-ranked pet in this browser by name)',
+    'Legendary drip': 'streak of 14+ days (gold glow)',
+    'Cursed tweet thread': '1-2 days missed since the last meal', 'Flop era': '3-6 days missed', 'Shitpost encounters': '7+ days missed'
   };
   /** One ranking, WAGMI (top) to NGMI (bottom): streaks by score (desc), then neutral pets, then neglected pets by days since
    *  the last meal (asc), so the most neglected pet is dead last. */
@@ -301,11 +302,11 @@
     st = st || this.state();
     var self = this, today = dayKey(this.now());
     var rows = st.pets.map(function (p) {
-      var x = self.petStatus(p), badges = [], flavor = null, eq = p.slots.concat(p.bonusSlots).filter(function (sl) { return sl.unlocked && sl.item && sl.item.tier >= 2; }).length;
-      if (p.art.tierIndex === 3 || eq >= 3) badges.push('Legendary drip');
-      if (x.streakDays >= 7) badges.push('Fire takes');
-      if (x.streakDays >= 3) badges.push('Roast mode');
-      if (x.kind === 'neglected') badges.push(x.daysSince >= 7 ? 'Cursed tweet thread' : x.daysSince >= 3 ? 'Flop era' : 'Shitpost encounters');
+      var x = self.petStatus(p), badges = [], flavor = null;
+      if (x.streakDays >= 14) badges.push('Legendary drip');
+      if (x.streakDays >= 7) badges.push('Roast mode');
+      if (x.streakDays >= 3) badges.push('Fire takes');
+      if (x.kind === 'neglected') badges.push(x.missed >= 7 ? 'Shitpost encounters' : x.missed >= 3 ? 'Flop era' : 'Cursed tweet thread');
       if (badges.indexOf('Shitpost encounters') >= 0) flavor = p.art.defaultName + ' ' + SHITPOSTS[hash(p.id + ':' + today) % SHITPOSTS.length] + '.';
       return { id: p.id, name: p.art.defaultName, species: p.art.species, tier: p.art.tierIndex, stage: p.stageName, status: x, badges: badges, flavor: flavor };
     });
@@ -314,13 +315,16 @@
       var g = grp[a.status.kind] - grp[b.status.kind];
       if (g) return g;
       if (a.status.kind === 'streak') return b.status.score - a.status.score || b.status.streakDays - a.status.streakDays || a.id - b.id;
-      if (a.status.kind === 'neglected') return a.status.daysSince - b.status.daysSince || a.id - b.id;
+      if (a.status.kind === 'neglected') return a.status.missed - b.status.missed || a.id - b.id;
       return a.id - b.id;
     });
-    // Roast mode: roast another pet by name (the lowest-ranked other pet; rotates templates by day)
+    // Roast mode: roast another pet by name, picked (per roaster per day) from the bottom 3 other pets; template rotates daily
     rows.forEach(function (r) {
       if (r.badges.indexOf('Roast mode') < 0) return;
-      for (var i = rows.length - 1; i >= 0; i--) if (rows[i].id !== r.id) { r.roast = r.name + ': "' + ROASTS[hash(r.id + ':' + today) % ROASTS.length].replace('{n}', rows[i].name) + '"'; break; }
+      var pool = rows.filter(function (o) { return o.id !== r.id; }).slice(-3);
+      if (!pool.length) return;
+      var h = hash(r.id + ':' + today), t = pool[h % pool.length];
+      r.roast = r.name + ': "' + ROASTS[(h >>> 8) % ROASTS.length].replace('{n}', t.name) + '"'; r.roastTarget = t.id;
     });
     rows.forEach(function (r, i) { r.rank = i + 1; });
     return rows;

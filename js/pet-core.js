@@ -562,6 +562,8 @@
     '1': 'sp1', '2': 'sp2', '3': 'sp3', '4': 'sp4', '5': 'sp5', '6': 'sp6', '7': 'sp7', '8': 'sp8', '9': 'sp9' }; // 1-9: per-species fixed/derived colours (SPECIES[].colors)
 
   // 'classic' = the species' canon colors. It is special-cased: always weighted x4 (see itemWeight).
+  var TIER_LOCK = { pepe: 0, wojak: 0, chud: 0, peepo: 0, bobo: 1, mumu: 1, doge: 1, snibby: 2, sarutobi: 2, lenny: 2, dodo: 3, kevin: 3 };
+  SPECIES.forEach(function (s) { if (s.id in TIER_LOCK) { var tw = [0, 0, 0, 0]; tw[TIER_LOCK[s.id]] = s.w; s.tw = tw; s.t = TIER_LOCK[s.id]; } }); // promo species-tier lock
   var PALETTES = [
     { id: 'classic', label: 'Classic', w: 40, t: 0, classic: true },
     { id: 'peach', label: 'Peach', w: 10, t: 0, body: '#f4a98a', accent: '#d9715a', belly: '#fde4d4' },
