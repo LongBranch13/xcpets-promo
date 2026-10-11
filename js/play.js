@@ -74,16 +74,16 @@
     return '<b>Next: Mythic</b> - tap Evolve (' + fmt(C.evolve) + ' play XCPETS)';
   }
   function lootLine(p) {
-    var L = DemoCore.LOOT[p.stage];
-    if (!L) return '<div class="small muted">Rolls: hatch first.</div>';
-    var names = ['Common', 'Uncommon', 'Rare', 'Legendary'], tot = L.weights.reduce(function (a, b) { return a + b; }, 0);
-    return '<div class="small loot"><b>Roll odds (' + p.stageName + '):</b> ' + L.weights.map(function (w, i) { return names[i] + ' ' + Math.round(w * 100 / tot) + '%'; }).join(' / ') +
+    if (!p.stage) return '<div class="small muted">Rolls: hatch first.</div>';
+    if (!p.baseSlots) return '<div class="small muted">Common pets have no base gear slots (gear by rarity: Uncommon 2, Rare 4, Legendary 5). Bonus slots still open with a Slot Key.</div>';
+    var names = ['Common', 'Uncommon', 'Rare', 'Legendary'], o = DemoCore.rarityOdds(p.art.tierIndex, 'band', p.art.species);
+    return '<div class="small loot"><b>Roll odds (' + PetCore.TIERS[p.art.tierIndex].label + ' pet, ' + p.baseSlots + ' slots; band shown, items up to its rarity, own rarity 4x):</b> ' + o.map(function (w, i) { return w ? names[i] + ' ' + Math.round(w * 100) + '%' : ''; }).filter(Boolean).join(' / ') +
       ' <span class="muted">(' + fmt(C.roll) + ' per roll or 1 free token; 1% Slot Key chance per roll)</span></div>';
   }
   function feedDefault(p) { return p.stage < 4 ? Math.max(C.feedPet, p.next - p.care) : DemoCore.DROP.bigFeedMin; }
-  function slotHtml(sl, inv, tokens, species) {
+  function slotHtml(sl, inv, tokens, species, tierIdx) {
     var label = SLOT_ICON[sl.slot] + ' ' + SLOT_LABEL[sl.slot];
-    if (!sl.unlocked) return '<div class="slot locked">' + label + ': <span class="muted">' + (sl.bonus ? 'bonus slot, needs a Slot Key' : 'unlocks at ' + N[sl.unlockStage]) + '</span></div>';
+    if (!sl.unlocked) return '<div class="slot locked">' + label + ': <span class="muted">' + (sl.bonus ? 'bonus slot, needs a Slot Key' : 'not on a ' + PetCore.TIERS[tierIdx].label + ' pet') + '</span></div>';
     var opts = inv.filter(function (it) { return it.slot === sl.slot && (!it.species || it.species === species) && (!sl.item || it.uid !== sl.item.uid); });
     var sel = opts.length ? '<select class="pick" data-slot="' + sl.slot + '" aria-label="Pick a ' + sl.slot + '">' + opts.map(function (it) {
       return '<option value="' + it.uid + '">' + esc(it.label) + ' (' + PetCore.TIERS[it.tier].label + (it.on ? ', on #' + it.on : '') + ')</option>';
@@ -94,9 +94,9 @@
   }
   function slotsHtml(p, inv, st) {
     var nb = p.bonusSlots.filter(function (x) { return x.unlocked; }).length;
-    return p.slots.map(function (sl) { return slotHtml(sl, inv, st.tokens, p.art.species); }).join('') +
+    return p.slots.map(function (sl) { return slotHtml(sl, inv, st.tokens, p.art.species, p.art.tierIndex); }).join('') +
       '<div class="small muted" style="margin-top:6px"><b>Bonus slots</b> (meme gear)' + (st.keys && nb < 3 ? ' <button class="q usekey">Use Slot Key (' + st.keys + ')</button>' : '') + '</div>' +
-      p.bonusSlots.map(function (sl) { return slotHtml(sl, inv, st.tokens, p.art.species); }).join('');
+      p.bonusSlots.map(function (sl) { return slotHtml(sl, inv, st.tokens, p.art.species, p.art.tierIndex); }).join('');
   }
   function petCard(p, inv, st) {
     var fedOut = p.feedsToday >= p.feedLimit, dis = fedOut ? ' disabled title="Fed ' + p.feedLimit + '/' + p.feedLimit + ' today, back tomorrow"' : '';
@@ -110,7 +110,7 @@
       '<div class="small next">' + nextLine(p) + '</div>' +
       '<div class="small muted">Hunger ' + Math.round(p.hunger * 100) + '% <span class="muted">(drains over 24 h since the last meal; cosmetic)</span></div><div class="hunger" aria-label="hunger meter"><i style="width:' + Math.round(p.hunger * 100) + '%"></i></div></div></div>' +
       lootLine(p) +
-      '<div class="gear"><b>Gear slots</b> <span class="muted">(stages unlock slots; pick one and Roll, or equip from your inventory)</span>' + slotsHtml(p, inv, st) + '</div>' +
+      '<div class="gear"><b>Gear slots</b> <span class="muted">(rarity sets the slots; pick one and Roll, or equip from your inventory)</span>' + slotsHtml(p, inv, st) + '</div>' +
       (p.ascended ? '' : '<div class="small feeds' + (fedOut ? ' err' : '') + '">' + (fedOut ? '<b>Fed ' + p.feedLimit + '/' + p.feedLimit + ' today, back tomorrow</b> (resets at local midnight)' : 'Feeds today: ' + p.feedsToday + '/' + p.feedLimit) + '</div>' +
         (p.stage < 4 ? '<div class="row"><button class="btn feed big"' + dis + '>Feed ' + fmt(feedDefault(p)) + ' (to ' + N[p.stage + 1] + ')</button></div>' : '') +
       '<div class="row" style="margin-top:8px"><input class="amt feedAmt" type="number" min="' + C.feedPet + '" step="1" value="' + feedDefault(p) + '" aria-label="Feed amount">' +

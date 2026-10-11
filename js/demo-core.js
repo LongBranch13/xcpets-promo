@@ -2,7 +2,7 @@
  * The demo keeps a list of fake destroy rows (same shape as Counterparty API v2 rows, with pet: tags) and replays them
  * through the REAL GameCore.buildState (with the demo's cost/threshold config), so hatching, care, stages and the Mythic
  * evolve rule are the real game's code. Pet art comes from PetCore.generate(fake block hash, fake tx hash); the promo build's copy locks each species to one tier.
- * Demo-only extra: gear is LOOT. Stages unlock slots; items drop rarely and are equipped by the player. */
+ * Demo-only extra: gear is LOOT. Rarity decides slots (Common 0 / Uncommon 2 / Rare 4 / Legendary 5); items are rolled and are equipped by the player. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory;
   else root.DemoCore = factory(root.GameCore, root.PetCore, root.BonusGear);
@@ -23,7 +23,7 @@
   // Like the real game, EVERY valid play burn counts toward it.
   var DEMO_SHARED = [0, 41400, 82800, 124200, 165600, 207000];
   var RULES = { costs: DEMO_COSTS, petThresholds: DEMO_THRESHOLDS, communityThresholds: DEMO_SHARED };
-  // Loot: slots unlock by stage (slot k at stage k+1); drops: 25% per stage-up action, 2% per feed of >= 690, max 1 per action.
+  // Loot: base slots by rarity (pet-core gearSlots, GEAR_RANKS order); free-token drops: 25% per stage-up action, 2% per feed of >= 690, max 1 per action.
   var SLOTS = ['band', 'armor', 'cape', 'weapon', 'crown'];
   var LISTS = { band: 'BANDS', armor: 'ARMORS', cape: 'CAPES', weapon: 'WEAPONS', crown: 'CROWNS' };
   // SLOT ROLL: the player picks an unlocked slot and pays DEMO_COSTS.roll (or spends a free roll token) to roll one item for it.
@@ -39,14 +39,17 @@
   var EXTRA = (BonusGear && BonusGear.ITEMS) || [];
   var BONUS_ITEMS = EXTRA.filter(function (x) { return BONUS.indexOf(x.slot) >= 0; });
   function extraFor(slot, species) { return EXTRA.filter(function (x) { return x.slot === slot && (!x.species || x.species === species); }); }
-  // Rarity odds per stage of the ROLLING pet, weights [Common, Uncommon, Rare, Legendary] (missing = 0).
-  // Equipping only needs the slot unlocked on the wearer.
-  var LOOT = [null,
-    { slots: 1, weights: [100] },             // Hatchling: band, Common only
-    { slots: 2, weights: [80, 20] },          // Juvenile: band, armor
-    { slots: 3, weights: [70, 22, 8] },       // Adult: + cape, up to Rare
-    { slots: 4, weights: [68, 22, 8, 2] },    // Elder: + weapon, up to Legendary
-    { slots: 5, weights: [60, 25, 11, 4] }];  // Mythic: all 5 incl. crown, better odds
+  // Gear by rarity (pet-core's original rule): a pet's tier decides how many base slots it has, in GEAR_RANKS order
+  // (Common 0, Uncommon 2 = band+armor, Rare 4 = +cape+weapon, Legendary 5 = +crown), all open from Hatchling.
+  // Roll rarity also uses pet-core's own gear rule (weightedPick): items up to the pet's tier, weight w (10) x4 at its own tier.
+  function baseSlots(p) { return p.stage >= 1 ? Math.min(SLOTS.length, PetCore.TIERS[p.art.tierIndex].gearSlots) : 0; }
+  function tierPool(slot, species, tierIdx) {
+    var extra = extraFor(slot, species).map(function (x) { return { id: x.id, label: x.label, t: x.tier, w: 10, species: x.species }; });
+    var all = BONUS.indexOf(slot) >= 0 ? extra : PetCore[LISTS[slot]].map(function (x) { return { id: x.id, label: x.label, t: x.t, w: x.w || 10 }; }).concat(extra);
+    var pool = all.filter(function (x) { return x.t <= tierIdx; });
+    if (!pool.length && all.length) { var m = Math.min.apply(null, all.map(function (x) { return x.t; })); pool = all.filter(function (x) { return x.t === m; }); }
+    return pool.map(function (x) { return { it: x, w: x.w * (x.t === tierIdx ? 4 : 1) }; });
+  }
 
   function hex64(rand, zeros) {
     var s = '';
@@ -83,57 +86,36 @@
   function round8(n) { return Math.round(n * 1e8) / 1e8; }
   function err(msg) { var e = new Error(msg); e.demo = true; throw e; }
 
-  function pickTier(rand, w) {
-    var tot = 0, i, r; for (i = 0; i < w.length; i++) tot += w[i];
-    r = rand() * tot; for (i = 0; i < w.length; i++) { if (r < w[i]) return i; r -= w[i]; }
-    return w.length - 1;
-  }
-  /** Roll one item for a chosen slot at a pet stage: rarity from the stage odds, then a uniform variant of that rarity.
-   *  Base slots use pet-core's variant tables (every rarity exists). Bonus slots have few items: if the rolled rarity has
-   *  none in that slot, the nearest LOWER rarity is used, else the slot's lowest-rarity item. */
-  Demo.prototype.rollItem = function (stage, slot, species) {
-    var L = LOOT[Math.max(1, Math.min(5, stage || 1))], tier = pickTier(this.rand, L.weights), pool, all, t;
-    var extra = extraFor(slot, species);
-    if (BONUS.indexOf(slot) >= 0) {
-      all = extra; t = tier; pool = [];
-      while (t >= 0 && !pool.length) { pool = all.filter(function (x) { return x.tier === t; }); if (!pool.length) t--; } // eslint-disable-line no-loop-func
-      if (!pool.length) { t = Math.min.apply(null, all.map(function (x) { return x.tier; })); pool = all.filter(function (x) { return x.tier === t; }); }
-      tier = t;
-    } else {
-      if (SLOTS.indexOf(slot) < 0) err('Unknown slot.');
-      // base slot: pet-core variants of that rarity + extra (shared/own-species signature) items of that rarity, all equally likely
-      pool = PetCore[LISTS[slot]].filter(function (x) { return x.t === tier; }).map(function (x) { return { id: x.id, label: x.label }; })
-        .concat(extra.filter(function (x) { return x.tier === tier; }));
-    }
-    var it = pool[Math.floor(this.rand() * pool.length)];
-    return { uid: this.s.nextUid++, slot: slot, id: it.id, label: it.label, tier: tier, tierId: PetCore.TIERS[tier].id,
+  /** Roll one item for slot on a pet of tier tierIdx (pet-core's gear rule, see tierPool). Bonus slots with nothing at or
+   *  below the pet's tier fall back to the slot's lowest-rarity item. */
+  Demo.prototype.rollItem = function (tierIdx, slot, species) {
+    if (SLOTS.indexOf(slot) < 0 && BONUS.indexOf(slot) < 0) err('Unknown slot.');
+    var pool = tierPool(slot, species, tierIdx), tot = pool.reduce(function (x, y) { return x + y.w; }, 0), r = this.rand() * tot, it = pool[pool.length - 1].it;
+    for (var i = 0; i < pool.length; i++) { if (r < pool[i].w) { it = pool[i].it; break; } r -= pool[i].w; }
+    return { uid: this.s.nextUid++, slot: slot, id: it.id, label: it.label, tier: it.t, tierId: PetCore.TIERS[it.t].id,
       bonus: BONUS.indexOf(slot) >= 0, overlay: !!(BonusGear && BonusGear.DEFS && BonusGear.DEFS[it.id]), species: it.species || null };
   };
-  /** Per-roll odds of every item a pet of `species` can get in `slot` at `stage` (for docs/tests). */
-  Demo.rollOdds = function (stage, slot, species) {
-    var w = LOOT[stage].weights, tot = w.reduce(function (x, y) { return x + y; }, 0), out = {}, extra = extraFor(slot, species);
-    w.forEach(function (wt, tier) {
-      if (!wt) return;
-      var pool;
-      if (BONUS.indexOf(slot) >= 0) {
-        var t = tier; pool = [];
-        while (t >= 0 && !pool.length) { pool = extra.filter(function (x) { return x.tier === t; }); if (!pool.length) t--; } // eslint-disable-line no-loop-func
-        if (!pool.length) { t = Math.min.apply(null, extra.map(function (x) { return x.tier; })); pool = extra.filter(function (x) { return x.tier === t; }); }
-      } else pool = PetCore[LISTS[slot]].filter(function (x) { return x.t === tier; }).concat(extra.filter(function (x) { return x.tier === tier; }));
-      pool.forEach(function (x) { out[x.id] = (out[x.id] || 0) + wt / tot / pool.length; });
-    });
+  /** Per-roll odds of every item a pet of `species` and tier tierIdx can get in `slot` (for docs/tests). */
+  Demo.rollOdds = function (tierIdx, slot, species) {
+    var pool = tierPool(slot, species, tierIdx), tot = pool.reduce(function (x, y) { return x + y.w; }, 0), out = {};
+    pool.forEach(function (x) { out[x.it.id] = (out[x.it.id] || 0) + x.w / tot; });
     return out;
+  };
+  /** Chance of each rarity per roll for a tier and base slot. */
+  Demo.rarityOdds = function (tierIdx, slot, species) {
+    var pool = tierPool(slot || 'band', species, tierIdx), tot = pool.reduce(function (x, y) { return x + y.w; }, 0), out = [0, 0, 0, 0];
+    pool.forEach(function (x) { out[x.it.t] += x.w / tot; }); return out;
   };
   function speciesName(id) { var x = PetCore.SPECIES.filter(function (q) { return q.id === id; })[0]; return x ? x.label : id; }
   function slotOpen(s, p, slot) {
     var k = SLOTS.indexOf(slot);
-    if (k >= 0) return k < p.stage;
+    if (k >= 0) return k < baseSlots(p);
     k = BONUS.indexOf(slot);
     return k >= 0 && k < ((s.bonus || {})[p.id] || 0);
   }
   function slotErr(p, slot) {
     var k = SLOTS.indexOf(slot);
-    return k >= 0 ? 'The ' + slot + ' slot unlocks at ' + GameCore.STAGE_NAMES[k + 1] + '.' : 'The ' + slot + ' bonus slot needs a Slot Key.';
+    return k >= 0 ? (p.stage < 1 ? 'Hatch first.' : 'A ' + PetCore.TIERS[p.art.tierIndex].label + ' pet has no ' + slot + ' slot (gear slots by rarity: Common 0, Uncommon 2, Rare 4, Legendary 5).') : 'The ' + slot + ' bonus slot needs a Slot Key.';
   }
   /** SLOT ROLL: pay DEMO_COSTS.roll play XCPETS (a fake burn that, like any plain burn, feeds the shared pet) or spend a free
    *  roll token, and roll an item for an unlocked slot of pet id. The item goes to the inventory and is auto-equipped when the
@@ -150,7 +132,7 @@
       if (DEMO_COSTS.roll > this.s.balance) err('Not enough play XCPETS. Hit Refill (free).');
       tx = this.addRow(DEMO_COSTS.roll, 'demo:roll:' + id + ':' + slot);
     }
-    var it = this.grant(this.rollItem(p.stage, slot, p.art.species)), key = this.rand() < DROP.key;
+    var it = this.grant(this.rollItem(p.art.tierIndex, slot, p.art.species)), key = this.rand() < DROP.key;
     if (key) this.s.keys = (this.s.keys || 0) + 1;
     var eq = (this.s.equip[id] = this.s.equip[id] || {}), auto = eq[slot] == null;
     if (auto) eq[slot] = it.uid;
@@ -382,7 +364,8 @@
       var lfm = (s.lastFed || {})[p.id]; if (lfm == null) { (s.lastFed = s.lastFed || {})[p.id] = +self0.now(); } // older saves: start the clock now
       p.hunger = Math.max(0, Math.min(1, 1 - (+self0.now() - s.lastFed[p.id]) / 86400000));
       var eq = s.equip[p.id] || {};
-      p.slots = SLOTS.map(function (slot, k) { var it = eq[slot] != null ? item(s, eq[slot]) : null; return { slot: slot, unlocked: k < p.stage, unlockStage: k + 1, item: it }; });
+      var nbase = baseSlots(p); p.baseSlots = nbase; p.tierSlots = PetCore.TIERS[p.art.tierIndex].gearSlots;
+      p.slots = SLOTS.map(function (slot, k) { var it = eq[slot] != null ? item(s, eq[slot]) : null; return { slot: slot, unlocked: k < nbase, item: it }; });
       var nb = (s.bonus || {})[p.id] || 0;
       p.bonusSlots = BONUS.map(function (slot, k) { var it = eq[slot] != null ? item(s, eq[slot]) : null; return { slot: slot, unlocked: k < nb, bonus: true, item: it }; });
       // pet-core variants go to gearOverride; overlay items (bonus + shared/signature extras) to extraGear for bonus-gear.js
@@ -399,7 +382,7 @@
     return st;
   };
 
-  Demo.COSTS = DEMO_COSTS; Demo.THRESHOLDS = DEMO_THRESHOLDS; Demo.SHARED = DEMO_SHARED; Demo.SLOTS = SLOTS; Demo.DROP = DROP; Demo.LOOT = LOOT; Demo.BONUS = BONUS; Demo.BONUS_ITEMS = BONUS_ITEMS; Demo.EXTRA = EXTRA; Demo.BULK = BULK; Demo.FEEDS_PER_DAY = FEEDS_PER_DAY;
+  Demo.COSTS = DEMO_COSTS; Demo.THRESHOLDS = DEMO_THRESHOLDS; Demo.SHARED = DEMO_SHARED; Demo.SLOTS = SLOTS; Demo.DROP = DROP; Demo.BONUS = BONUS; Demo.BONUS_ITEMS = BONUS_ITEMS; Demo.EXTRA = EXTRA; Demo.BULK = BULK; Demo.FEEDS_PER_DAY = FEEDS_PER_DAY;
   Demo.KEY = KEY; Demo.START = START; Demo.REFILL = REFILL; Demo.PLAYER = PLAYER;
   return Demo;
 });

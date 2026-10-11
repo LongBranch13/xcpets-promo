@@ -19,6 +19,17 @@
   var PET_THRESHOLDS = [0, 20000, 100000, 400000, 1500000, 5000000];        // Mythic also needs pet:evolve
   var COMMUNITY_THRESHOLDS = [0, 100000, 1000000, 5000000, 15000000, 30000000];
   var STAGE_NAMES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
+
+  // Community pet growing name (COMMUNITY_PET.md §2). Elder = COMMUNITY_THRESHOLDS[4].
+  // COMMUNITY_QUEST_END is the user's stated target; PENDING CONFIRMATION: it exceeds the 100M total supply.
+  var COMMUNITY_QUEST_END = 135000000;
+  var COMMUNITY_NAMES = ['Sat', '???', '???'];
+  function communityName(burned) {
+    var b = Number(burned) || 0;
+    if (b >= COMMUNITY_QUEST_END) return COMMUNITY_NAMES[2];
+    if (b >= COMMUNITY_THRESHOLDS[4]) return COMMUNITY_NAMES[1];
+    return COMMUNITY_NAMES[0];
+  }
   var NAME_RE = /^[A-Z][A-Z0-9_-]{0,15}$/;
 
   function decodeTag(hexTag) {
@@ -187,6 +198,7 @@
 
   return {
     UNIT: UNIT, COSTS: COSTS, PET_THRESHOLDS: PET_THRESHOLDS, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, STAGE_NAMES: STAGE_NAMES,
+    COMMUNITY_QUEST_END: COMMUNITY_QUEST_END, COMMUNITY_NAMES: COMMUNITY_NAMES, communityName: communityName,
     decodeTag: decodeTag, parseTag: parseTag, stageFor: stageFor, sortRows: sortRows, buildState: buildState
   };
 });
