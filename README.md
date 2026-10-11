@@ -1,11 +1,26 @@
-# XCPETS Play Demo: How It Works
+# XCPETS: How It Works
 
-Everything in the demo uses play XCPETS: fake money saved in your browser. It isn't real XCPETS and nothing goes on-chain. The pets and art come from the real game's generator, except that the demo locks each species to one rarity tier, so species odds differ from the real game (see section 1). Stages, care and evolving run on the real game's rules code. The costs are the demo's own, much cheaper than the real game, and gear rolling, tokens and Slot Keys are demo-only.
+Every explanation for the play demo lives on this page, with the full Rules & Odds tables at the end. The play page itself only has the controls.
+
+## Quick start
+1. **Hatch** a pet (69), or buy **12 eggs** (690) or **144 eggs** (6,900).
+2. Tap a pet in **My Pets** to open its detail view (use **‹ Prev** / **Next ›** or the arrow keys to flip through your pets), then tap the orange **Feed** button to give it a meal, up to 3 meals a day per pet. Meals grow with the stage (1,380 → 2,300 → 3,220 → 3,450), and Mythic comes on day 9.
+3. Once an Elder is fed to 69,069 care, tap **Evolve** (no extra burn).
+4. In the detail view, pick a gear slot and tap **Roll (345)**, or tap 🎟️ to spend a free roll token.
+5. Out of play money? Tap **Refill**.
+
+**My Pets is a gallery.** Each card shows the pet's animated sprite (wearing its equipped gear), its name, species, rarity and stage, a progress bar, a hunger bar, **Fed n/3**, and small chips for its traits (🎨 palette, ▦ pattern, 👁 eyes, 🖼 background, ☺ blush) and its equipped gear. Cards have no buttons: tap (or press Enter on) a card to open its **detail view**, a big animated sprite where every action lives: Feed, Evolve, gear slots (Roll, 🎟️ token, Equip, Swap, Unequip, 🔑 Use key), roll odds and Release. Close it with ×, Esc or a click outside.
+
+On the play page: 🎟️ is your free roll tokens, 🔑 your Slot Keys, **Fed n/3** the meals a pet has had today, 🍖 n% its hunger meter, and **→ Stage: n 🍖** the meals left to its next stage. Only the gear slots a pet actually has are shown.
+
+Burn tags used by the demo: `pet:hatch` (hatch), `pet:feed:ID` (a meal for pet ID), `pet:evolve:ID` (evolve, 0 play XCPETS) and `pet:feed` (feed the shared pet, 7 minimum).
+
+Everything in the demo uses play XCPETS: fake money saved in your browser. It isn't real XCPETS and nothing goes on-chain. The pets and art come from the real game's generator, with the same species and rarity odds as the real game (see section 1). Stages, care and evolving run on the real game's rules code. The costs are the demo's own, much cheaper than the real game, and gear rolling, tokens and Slot Keys are demo-only.
 
 ## Your play wallet
-- You start with 69,000 play XCPETS, exactly enough to raise one pet from Egg to Mythic.
+- You start with 69,069 play XCPETS, exactly enough to raise one pet from Egg to Mythic (a 69 hatch plus 26 meals).
 - Tap **Refill** any time for a free +345,000.
-- **Reset demo** wipes your wallet, pets and gear and starts over.
+- **Reset** wipes your wallet, pets and gear and starts over.
 
 ## Hatching
 - Hatching costs **69** play XCPETS. Each hatch rolls a brand-new pet from a random fake block hash and burn id, using the game's own generator, exactly as in the real game.
@@ -17,8 +32,8 @@ Everything in the demo uses play XCPETS: fake money saved in your browser. It is
 | Pack | Eggs | Price (play XCPETS) | Per egg | Saving vs single hatches |
 |---|---|---|---|---|
 | Single hatch | 1 | 69 | 69 | none |
-| **Dozen eggs** | 12 | 690 | 57.5 | 12 for the price of 10 (about 17% off) |
-| **Case of eggs** (a gross) | 144 | 6,900 | about 47.9 | about 31% off (9,936 as singles) |
+| **12 eggs** (a dozen) | 12 | 690 | 57.5 | 12 for the price of 10 (about 17% off) |
+| **144 eggs** (a case, a gross) | 144 | 6,900 | about 47.9 | about 31% off (9,936 as singles) |
 
 - Every egg in a pack is a normal, independent hatch: the same generator, its own random fake block hash and burn id, and the same species and rarity odds as a single hatch.
 - In the burn log each egg is a normal 69 hatch (so it lands on Hatchling and feeds the shared pet 69). The pack discount is refunded to your wallet straight away.
@@ -43,20 +58,22 @@ Rarity decides which palettes, patterns, eyes and backgrounds your pet can roll,
 ## Stages: Egg to Mythic
 Every pet grows through six stages: **Egg, Hatchling, Juvenile, Adult, Elder, Mythic**. From Hatchling on, each stage changes its expression. A minimum hatch skips the Egg and lands on Hatchling.
 
-| Step | Cost (play XCPETS) |
-|---|---|
-| Hatch (straight to Hatchling) | 69 |
-| Hatchling to Juvenile | 10,350 (care 10,419) |
-| Juvenile to Adult | 13,800 (care 24,219) |
-| Adult to Elder | 17,250 (care 41,469) |
-| Elder to Mythic (Evolve) | 27,531 |
-| **Total, Egg to Mythic** | **69,000** |
+Meal size depends on the pet's current stage, and each pet can eat 3 meals a day. The day column assumes 3 meals every day, starting the day you hatch (day 1).
+
+| Stage | Meal size | Meals | Stage cost (play XCPETS) | Care reached | Next stage reached on |
+|---|---|---|---|---|---|
+| Hatch (straight to Hatchling) | - | - | 69 | 69 | Day 1 |
+| Hatchling → Juvenile | 1,380 | 6 | 8,280 | 8,349 | Day 2 |
+| Juvenile → Adult | 2,300 | 6 | 13,800 | 22,149 | Day 4 |
+| Adult → Elder | 3,220 | 6 | 19,320 | 41,469 | Day 6 |
+| Elder → Mythic (fed, then free Evolve) | 3,450 | 8 | 27,600 | 69,069 | Day 9 |
+| **Total, Egg to Mythic** | | **26** | **69,069** | | **Day 9** |
 
 ## Feeding (care)
 - Feeding burns play XCPETS into your pet as **care**. When its care reaches the next threshold, it moves up a stage.
-- The big orange **Feed** button on each pet card feeds exactly enough to reach the next stage, so it's one tap per stage. You can also type any amount (minimum 7) and tap **Feed amount**.
-- **Daily limit: each pet can be fed at most 3 times per day**, counted by your device's local calendar day and reset at local midnight. Both the orange **Feed** button and **Feed amount** count. Evolving, hatching, gear rolls and feeding the shared pet don't count. Each card shows **Feeds today: n/3**. After the third feed the feed buttons are greyed out with "Fed 3/3 today, back tomorrow", and a blocked feed costs nothing. With one-tap stage feeds, a pet can still go from Hatchling to Elder in one day (3 feeds), then to Mythic with Evolve.
-- At Elder, tap **Evolve to Mythic** to ascend. The button stays greyed out until your pet reaches Elder.
+- Every feed is one meal: the orange **Feed** button in a pet's detail view shows the current meal size (1,380 at Hatchling, 2,300 at Juvenile, 3,220 at Adult, 3,450 at Elder) and burns exactly that into the pet. There's no custom amount for your own pets. The last meal of a stage is trimmed to whatever is left to the next stage, so a meal never overshoots (older saves keep all their care and just continue from there). The detail view shows how many meals are left to the next stage.
+- **Daily limit: each pet can be fed at most 3 meals per day**, counted by your device's local calendar day and reset at local midnight. Evolving, hatching, gear rolls and feeding the shared pet don't count. Each card shows **Fed n/3**. After the third feed the feed buttons are greyed out with "Fed 3/3" (a blocked feed says "back tomorrow"), and a blocked feed costs nothing. A casual player feeding 3 meals a day reaches Mythic on day 9.
+- Elder to Mythic is the biggest jump (8 meals of 3,450). Keep feeding your Elder; once its care reaches 69,069 the Feed button goes away and **Evolve** lights up. Tap it to ascend: it costs nothing extra. The button stays greyed out until then.
 
 ## Gear
 Gear slots come from **rarity**, using the game's own rule (each tier's gear-slot count), and they are all open from Hatchling:
@@ -69,7 +86,7 @@ Gear slots come from **rarity**, using the game's own rule (each tier's gear-slo
 | Legendary | 5: + crown |
 
 ### Rolling for gear
-- Pick one of your pet's slots on its card and tap **Roll (345)**. You get a random item for that slot.
+- Pick one of your pet's slots in its detail view and tap **Roll (345)**. You get a random item for that slot.
 - Every item goes into your inventory. If the slot was empty, it is also equipped right away.
 - A paid roll is a play burn of 345. It adds no care to your pet, but it does count toward the shared pet.
 - Each slot's pool also has new hand-drawn items: shared ones for every pet, and signature items that only roll for (and can only be worn by) their own species. Examples: Pepe's pimp hat, Wojak's hard hat, Bobo's red-candle dagger. The full list is in the reference below.
@@ -84,10 +101,10 @@ Gear slots come from **rarity**, using the game's own rule (each tier's gear-slo
 Other slots differ a little because their pools have different sizes; exact per-item chances are in the reference below.
 
 ### Free roll tokens
-Each burn that raises a pet's stage (a hatch, a feed or the Evolve) has a 25% chance to drop a free roll token. Otherwise, each feed of 690 or more has a 2% chance. At most one token drops per action. Rolling with a token costs no play XCPETS. Spend a token on any of a pet's slots with **Use token**.
+Each burn that raises a pet's stage (a hatch, a feed or the Evolve) has a 25% chance to drop a free roll token. Otherwise, every meal has a 2% chance. At most one token drops per action. Rolling with a token costs no play XCPETS. Spend a token on any of a pet's slots with the 🎟️ button.
 
 ### Swapping gear
-Your items live in the inventory panel. On any pet card you can **Equip**, **Swap** or **Unequip** an item in one of its slots. Each item can be on only one pet at a time.
+Your items live in the inventory panel. In any pet's detail view you can **Equip**, **Swap** or **Unequip** an item in one of its slots. Each item can be on only one pet at a time.
 
 ### Bonus slots
 Every roll has a 1% chance to drop a **Slot Key**. Using a key permanently opens a bonus slot on that pet, in this order: face, then back, then feet. Bonus slots work on every pet, Commons included, so a key is the only way to put gear on a Common.
@@ -101,9 +118,9 @@ Bonus-slot rolls cost the same 345 (or a token) and use the same rule, limited t
 | Feet | Counterparty coin (Common), Stack of sats (Uncommon); Sarutobi also Smoke-bomb sandals (Rare) |
 
 ## Hunger meter
-Each pet card has a hunger meter. It is full right after a meal and drains evenly to empty 24 hours after the last one. Every feed refills it, and a hatch counts as the first meal. It's cosmetic only: an empty meter changes nothing.
+Each pet card and detail view has a hunger meter. It is full right after a meal and drains evenly to empty 24 hours after the last one. Every feed refills it, and a hatch counts as the first meal. It's cosmetic only: an empty meter changes nothing.
 
-## WAGMI to NGMI (power ranking)
+## Ranking: WAGMI to NGMI (power ranking)
 All your pets in this browser are ranked in one list, with **WAGMI** at the top and **NGMI** at the bottom. It's cosmetic only.
 
 1. **Pets on a streak** come first, by streak score. A streak counts consecutive days with at least one feed. It ends today, or yesterday if you haven't fed the pet yet today. Each fed day is worth 1, and a full 3/3 day is worth 1.5.
@@ -124,11 +141,11 @@ With more than 20 pets, the list shows the top 10 and bottom 10, with a **Show a
 "Days missed" counts whole calendar days with no meal since the last one, so a pet fed yesterday has missed 0 and is still on its streak. A long streak earns all the streak badges it qualifies for.
 
 ## The shared community pet
-There's also a mystery community pet that everyone grows together. Nobody knows what it is yet. Every play burn helps it grow, including hatches, feeds and rolls, and **Feed the shared pet** sends play XCPETS straight to it. It grows three times slower than a personal pet: 41,400 per stage, 207,000 total to Mythic. In the demo, its progress is saved in your browser only.
+There's also a mystery community pet that everyone grows together. Nobody knows what it is yet. Every play burn helps it grow, including hatches, feeds and rolls, and **Feed** (in the Shared Pet panel) sends play XCPETS straight to it. It grows much slower than a personal pet: 41,400 per stage, 207,000 total to Mythic. In the demo, its progress is saved in your browser only.
 
 ---
 
-# Reference (generated from the code)
+# Rules & Odds (generated from the code)
 
 Everything below comes straight from the promo's `js/pet-core.js` (version `3.14.0-promo`), `js/demo-core.js` and `js/bonus-gear.js`. Percentages are computed from the weight tables in the code and rounded to two decimals. "Overall" means across all hatches, using the tier odds (Common 60%, Uncommon 27%, Rare 10%, Legendary 3%).
 

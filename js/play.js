@@ -28,15 +28,13 @@
     var t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html; $('toasts').appendChild(t);
     setTimeout(function () { t.remove(); }, 5000);
   }
-  function lootToast(d) { if (d && d.token) toast('Loot! A free roll token <span class="muted">(spend it on any unlocked slot)</span>'); }
+  function lootToast(d) { if (d && d.token) toast('🎟️ +1 free roll token'); }
   function rollToast(r) {
     toast('Rolled: ' + PetCore.TIERS[r.item.tier].label + ' ' + esc(r.item.label) + ' <span class="muted">(' + SLOT_LABEL[r.item.slot].toLowerCase() +
       (r.equipped ? ', equipped' : ', added to your inventory') + ')</span>');
-    if (r.key) toast('Bonus! A Slot Key dropped. Use it on a pet to unlock a bonus slot (face, back, feet).');
+    if (r.key) toast('🔑 +1 Slot Key');
   }
 
-  $('rules').textContent = 'Play-demo costs: hatch ' + fmt(C.hatch) + ', feed ' + fmt(C.feedPet) + ' min, evolve ' + fmt(C.evolve) + ', gear roll ' + fmt(C.roll) +
-    '. Egg to Mythic: ' + fmt(T[5]) + '. A fresh wallet starts with ' + fmt(DemoCore.START) + ' play XCPETS; Refill adds ' + fmt(DemoCore.REFILL) + ' for free.';
 
   function render() {
     var st = demo.state();
@@ -47,9 +45,10 @@
     // paginated (PAGE cards; only visible cards render/animate), filter by rarity, sort
     var ft = $('fTier').value, list = st.pets.filter(function (p) { return ft === '' || p.art.tierIndex === Number(ft); }), so = $('fSort').value;
     list.sort(so === 'tier' ? function (a, b) { return b.art.tierIndex - a.art.tierIndex || b.id - a.id; } : so === 'stage' ? function (a, b) { return b.stage - a.stage || b.id - a.id; } : function (a, b) { return b.id - a.id; });
+    listIds = list.map(function (p) { return p.id; });
     var pages = Math.max(1, Math.ceil(list.length / PAGE)); page = Math.min(page, pages - 1);
     animated = animated.filter(function (a) { return document.body.contains(a.canvas) && !box.contains(a.canvas); });
-    list.slice(page * PAGE, page * PAGE + PAGE).forEach(function (p) { box.appendChild(petCard(p, st.inventory, st)); });
+    list.slice(page * PAGE, page * PAGE + PAGE).forEach(function (p) { box.appendChild(petCard(p)); });
     $('petCount').textContent = list.length + ' of ' + st.pets.length + ' pets';
     $('pgInfo').textContent = 'page ' + (page + 1) + ' / ' + pages; $('pgPrev').disabled = page === 0; $('pgNext').disabled = page >= pages - 1;
     document.querySelectorAll('button.bulk').forEach(function (b) { b.disabled = DemoCore.BULK[b.dataset.bulk].price > st.balance; });
@@ -57,7 +56,7 @@
     $('inv').innerHTML = st.inventory.length ? st.inventory.map(function (it) {
       return '<div class="invitem" data-uid="' + it.uid + '">' + itemPill(it) + ' <span class="muted small">' + SLOT_LABEL[it.slot] + ' · ' + PetCore.TIERS[it.tier].label +
         (it.on ? ' · worn by #' + it.on : ' · free') + '</span></div>';
-    }).join('') : '<p class="muted small">No gear yet. Pick an unlocked slot on a pet and tap Roll (' + fmt(C.roll) + ') or spend a free roll token.</p>';
+    }).join('') : '';
     var sh = st.shared;
     $('sharedBar').style.width = Math.round(sh.progress * 100) + '%';
     $('sharedTxt').textContent = 'Stage ' + sh.stageName + ' · ' + fmt(sh.burned) + ' play XCPETS burned in total' +
@@ -69,9 +68,9 @@
   }
 
   function nextLine(p) {
-    if (p.ascended) return '<b>Fully grown:</b> Mythic. Nothing left to unlock.';
-    if (p.stage < 4) return '<b>Next: ' + N[p.stage + 1] + '</b> - feed ' + fmt(Math.max(0, p.next - p.care)) + ' more';
-    return '<b>Next: Mythic</b> - tap Evolve (' + fmt(C.evolve) + ' play XCPETS)';
+    if (p.ascended) return 'Mythic';
+    if (p.canEvolve) return 'Ready to evolve';
+    return '→ ' + N[p.stage + 1] + ': ' + p.mealsNext + ' 🍖';
   }
   function lootLine(p) {
     if (!p.stage) return '<div class="small muted">Rolls: hatch first.</div>';
@@ -80,56 +79,91 @@
     return '<div class="small loot"><b>Roll odds (' + PetCore.TIERS[p.art.tierIndex].label + ' pet, ' + p.baseSlots + ' slots; band shown, items up to its rarity, own rarity 4x):</b> ' + o.map(function (w, i) { return w ? names[i] + ' ' + Math.round(w * 100) + '%' : ''; }).filter(Boolean).join(' / ') +
       ' <span class="muted">(' + fmt(C.roll) + ' per roll or 1 free token; 1% Slot Key chance per roll)</span></div>';
   }
-  function feedDefault(p) { return p.stage < 4 ? Math.max(C.feedPet, p.next - p.care) : DemoCore.DROP.bigFeedMin; }
   function slotHtml(sl, inv, tokens, species, tierIdx) {
     var label = SLOT_ICON[sl.slot] + ' ' + SLOT_LABEL[sl.slot];
-    if (!sl.unlocked) return '<div class="slot locked">' + label + ': <span class="muted">' + (sl.bonus ? 'bonus slot, needs a Slot Key' : 'not on a ' + PetCore.TIERS[tierIdx].label + ' pet') + '</span></div>';
+    if (!sl.unlocked) return '';
     var opts = inv.filter(function (it) { return it.slot === sl.slot && (!it.species || it.species === species) && (!sl.item || it.uid !== sl.item.uid); });
     var sel = opts.length ? '<select class="pick" data-slot="' + sl.slot + '" aria-label="Pick a ' + sl.slot + '">' + opts.map(function (it) {
       return '<option value="' + it.uid + '">' + esc(it.label) + ' (' + PetCore.TIERS[it.tier].label + (it.on ? ', on #' + it.on : '') + ')</option>';
     }).join('') + '</select><button class="q equip" data-slot="' + sl.slot + '">' + (sl.item ? 'Swap' : 'Equip') + '</button>' : '';
-    return '<div class="slot">' + label + ': ' + (sl.item ? itemPill(sl.item) + ' <button class="q unequip" data-slot="' + sl.slot + '">Unequip</button>' : '<span class="muted">empty</span>') +
+    return '<div class="slot">' + label + ' ' + (sl.item ? itemPill(sl.item) + ' <button class="q unequip" data-slot="' + sl.slot + '">Unequip</button>' : '<span class="muted">empty</span>') +
       (sel ? ' ' + sel : '') + ' <button class="q roll" data-slot="' + sl.slot + '">Roll (' + fmt(C.roll) + ')</button>' +
-      (tokens ? '<button class="q roll tok" data-slot="' + sl.slot + '">Use token</button>' : '') + '</div>';
+      (tokens ? '<button class="q roll tok" data-slot="' + sl.slot + '">🎟️</button>' : '') + '</div>';
   }
   function slotsHtml(p, inv, st) {
     var nb = p.bonusSlots.filter(function (x) { return x.unlocked; }).length;
     return p.slots.map(function (sl) { return slotHtml(sl, inv, st.tokens, p.art.species, p.art.tierIndex); }).join('') +
-      '<div class="small muted" style="margin-top:6px"><b>Bonus slots</b> (meme gear)' + (st.keys && nb < 3 ? ' <button class="q usekey">Use Slot Key (' + st.keys + ')</button>' : '') + '</div>' +
+      (st.keys && nb < 3 ? '<div class="small" style="margin-top:4px"><button class="q usekey">🔑 Use key (' + st.keys + ')</button></div>' : '') +
       p.bonusSlots.map(function (sl) { return slotHtml(sl, inv, st.tokens, p.art.species, p.art.tierIndex); }).join('');
   }
-  function petCard(p, inv, st) {
-    var fedOut = p.feedsToday >= p.feedLimit, dis = fedOut ? ' disabled title="Fed ' + p.feedLimit + '/' + p.feedLimit + ' today, back tomorrow"' : '';
-    var t = tierOf(p), d = document.createElement('div'); d.className = 'pet'; d.id = 'pet-' + p.id;
-    var evolveHelp = p.ascended ? '' : (p.canEvolve ? 'Evolve is unlocked: one ' + fmt(C.evolve) + ' burn makes it Mythic.' : 'Evolve unlocks at Elder (' + fmt(T[4]) + ' care).');
-    d.innerHTML = '<div class="top"><canvas class="pixel" width="32" height="32"></canvas><div>' +
-      '<h4>' + esc(p.art.defaultName) + ' <span class="muted small">#' + p.id + '</span></h4>' +
-      '<div>' + esc(speciesLabel(p.art.species)) + ' <span class="pill tier tier-' + t.id + '">' + t.label + '</span></div>' +
-      '<div class="small">Stage: <b class="stg">' + p.stageName + '</b> · care <b class="care">' + fmt(p.care) + '</b></div>' +
+  function lab(list, id) { var x = (PetCore[list] || []).filter(function (q) { return q.id === id; })[0]; return x ? x.label : id; }
+  function chip(txt, cls) { return '<span class="chip' + (cls ? ' ' + cls : '') + '">' + esc(txt) + '</span>'; }
+  function traitChips(p) {
+    var a = p.art;
+    return chip('🎨 ' + lab('PALETTES', a.palette)) + chip('▦ ' + lab('PATTERNS', a.pattern)) + chip('👁 ' + lab('EYES', a.eyes)) + chip('🖼 ' + lab('BACKGROUNDS', a.background)) + (a.cheeks ? chip('☺ Blush') : '');
+  }
+  function gearChips(p) {
+    return p.slots.concat(p.bonusSlots).filter(function (sl) { return sl.unlocked && sl.item; })
+      .map(function (sl) { return '<span class="chip gearchip tier-' + sl.item.tierId + '">' + SLOT_ICON[sl.slot] + ' ' + esc(sl.item.label) + '</span>'; }).join('');
+  }
+  // My Pets gallery card: overview only (no actions). Click / Enter opens the detail view, where every action lives.
+  function petCard(p) {
+    var t = tierOf(p), d = document.createElement('div'); d.className = 'pet card'; d.id = 'pet-' + p.id;
+    d.setAttribute('role', 'button'); d.tabIndex = 0; d.setAttribute('aria-label', 'Open ' + p.art.defaultName + ' #' + p.id);
+    var fed = p.ascended ? '' : '<span class="chip' + (p.feedsToday >= p.feedLimit ? ' warn' : '') + '">Fed ' + p.feedsToday + '/' + p.feedLimit + '</span>';
+    d.innerHTML = '<canvas class="pixel sprite" width="32" height="32"></canvas>' +
+      '<div class="ov"><h4>' + esc(p.art.defaultName) + ' <span class="muted small">#' + p.id + '</span></h4>' +
+      '<div class="chips">' + chip(speciesLabel(p.art.species)) + '<span class="pill tier tier-' + t.id + '">' + t.label + '</span>' + chip(p.stageName, 'stg') + fed + '</div>' +
       '<div class="bar" aria-label="progress to next stage"><i style="width:' + Math.round(p.progress * 100) + '%"></i></div>' +
-      '<div class="small next">' + nextLine(p) + '</div>' +
-      '<div class="small muted">Hunger ' + Math.round(p.hunger * 100) + '% <span class="muted">(drains over 24 h since the last meal; cosmetic)</span></div><div class="hunger" aria-label="hunger meter"><i style="width:' + Math.round(p.hunger * 100) + '%"></i></div></div></div>' +
-      lootLine(p) +
-      '<div class="gear"><b>Gear slots</b> <span class="muted">(rarity sets the slots; pick one and Roll, or equip from your inventory)</span>' + slotsHtml(p, inv, st) + '</div>' +
-      (p.ascended ? '' : '<div class="small feeds' + (fedOut ? ' err' : '') + '">' + (fedOut ? '<b>Fed ' + p.feedLimit + '/' + p.feedLimit + ' today, back tomorrow</b> (resets at local midnight)' : 'Feeds today: ' + p.feedsToday + '/' + p.feedLimit) + '</div>' +
-        (p.stage < 4 ? '<div class="row"><button class="btn feed big"' + dis + '>Feed ' + fmt(feedDefault(p)) + ' (to ' + N[p.stage + 1] + ')</button></div>' : '') +
-      '<div class="row" style="margin-top:8px"><input class="amt feedAmt" type="number" min="' + C.feedPet + '" step="1" value="' + feedDefault(p) + '" aria-label="Feed amount">' +
-      '<button class="q" data-a="' + C.feedPet + '">' + fmt(C.feedPet) + '</button><button class="q" data-a="690">690</button><button class="q" data-a="6900">6,900</button>' +
-      '<button class="btn ghost feed custom"' + dis + '>Feed amount</button></div>' +
-      '<div class="row" style="margin-top:8px"><button class="btn evolve"' + (p.canEvolve ? '' : ' disabled') + '>Evolve to Mythic (' + fmt(C.evolve) + ')</button>' +
-      '<span class="small muted">' + evolveHelp + '</span></div>') +
-      '<div class="row" style="margin-top:8px"><button class="q release">Release pet (no refund)</button></div>' +
-      '<div class="msg" aria-live="polite"></div>';
-    d.querySelector('.release').onclick = function () {
-      if (window.confirm('Release ' + p.art.defaultName + ' #' + p.id + '? It is deleted from the demo with no refund; its gear goes back to your inventory.')) { demo.release(p.id); render(); }
-    };
+      '<div class="hunger" aria-label="hunger meter" title="Hunger ' + Math.round(p.hunger * 100) + '%"><i style="width:' + Math.round(p.hunger * 100) + '%"></i></div>' +
+      '<div class="chips traits">' + traitChips(p) + '</div>' +
+      '<div class="chips gearchips">' + gearChips(p) + '</div></div>';
     show(d.querySelector('canvas'), p.art, p.stage, p.gearOverride, p.bonusGear);
-    var amt = d.querySelector('.feedAmt'), msg = d.querySelector('.msg');
-    d.querySelectorAll('button.q[data-a]').forEach(function (b) { b.onclick = function () { amt.value = b.getAttribute('data-a'); }; });
+    d.onclick = function () { openDetail(p.id); };
+    d.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(p.id); } };
+    return d;
+  }
+  // Detail view (modal): big animated sprite, attributes, roll odds and ALL actions (feed, evolve, gear, rolls, keys, release).
+  var detailId = null, listIds = [];
+  function stepDetail(dir) {
+    var ids = listIds.length ? listIds : demo.state().pets.map(function (p) { return p.id; }), i = ids.indexOf(detailId);
+    if (!ids.length) return; detailId = ids[(i + dir + ids.length) % ids.length]; renderDetail();
+  }
+  $('zoomPrev').onclick = function () { stepDetail(-1); }; $('zoomNext').onclick = function () { stepDetail(1); };
+  function openDetail(id) { detailId = id; renderDetail(); $('zoomBox').classList.add('on'); $('zoomClose').focus(); }
+  function closeZoom() { $('zoomBox').classList.remove('on'); detailId = null; }
+  $('zoomClose').onclick = closeZoom;
+  $('zoomBox').onclick = function (e) { if (e.target === $('zoomBox')) closeZoom(); };
+  document.addEventListener('keydown', function (e) {
+    if (!$('zoomBox').classList.contains('on')) return;
+    if (e.key === 'Escape') closeZoom();
+    else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !/^(SELECT|INPUT)$/.test(document.activeElement.tagName)) stepDetail(e.key === 'ArrowLeft' ? -1 : 1);
+  });
+  function renderDetail(msgText, ok) {
+    if (detailId == null) return;
+    var st = demo.state(), p = st.byId[detailId];
+    if (!p) { closeZoom(); return; }
+    var t = tierOf(p), d = $('zoomInfo'), fedOut = p.feedsToday >= p.feedLimit, dis = fedOut ? ' disabled title="Fed ' + p.feedLimit + '/' + p.feedLimit + ' today, back tomorrow"' : '';
+    $('zoomTitle').textContent = p.art.defaultName + ' #' + p.id;
+    var pos = listIds.indexOf(p.id); $('zoomPos').textContent = pos >= 0 ? (pos + 1) + ' / ' + listIds.length : '';
+    show($('zoomCanvas'), p.art, p.stage, p.gearOverride, p.bonusGear);
+    d.innerHTML = '<div class="chips">' + chip(speciesLabel(p.art.species)) + '<span class="pill tier tier-' + t.id + '">' + t.label + '</span>' + chip(p.stageName, 'stg') + chip(fmt(p.care) + ' care') + '</div>' +
+      '<div class="bar" aria-label="progress to next stage"><i style="width:' + Math.round(p.progress * 100) + '%"></i></div>' +
+      '<div class="small next">' + nextLine(p) + ' · 🍖 ' + Math.round(p.hunger * 100) + '%</div>' +
+      '<div class="hunger" aria-label="hunger meter"><i style="width:' + Math.round(p.hunger * 100) + '%"></i></div>' +
+      '<div class="chips traits">' + traitChips(p) + '</div>' +
+      (p.ascended ? '' : '<div class="row" style="margin-top:8px">' + (p.canEvolve ? '' : '<button class="btn feed big"' + dis + '>Feed (' + fmt(p.meal) + ')</button>') +
+        '<button class="btn evolve"' + (p.canEvolve ? '' : ' disabled') + '>Evolve</button> <span class="small feeds' + (fedOut ? ' err' : '') + '">Fed ' + p.feedsToday + '/' + p.feedLimit + '</span></div>') +
+      '<div class="gear">' + slotsHtml(p, st.inventory, st) + '</div>' + lootLine(p) +
+      '<div class="row" style="margin-top:8px"><button class="q release">Release</button> <a class="small" href="how-it-works.html">How It Works</a></div>' +
+      '<div class="msg" id="detailMsg" aria-live="polite"></div>';
+    var msg = $('detailMsg');
+    if (msgText) { msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.textContent = msgText; }
+    d.querySelector('.release').onclick = function () {
+      if (window.confirm('Release ' + p.art.defaultName + ' #' + p.id + '? It is deleted from the demo with no refund; its gear goes back to your inventory.')) { demo.release(p.id); closeZoom(); render(); }
+    };
     var big = d.querySelector('.feed.big');
-    if (big) big.onclick = function () { act(function () { return demo.feed(p.id, feedDefault(p)); }, msg); };
-    var cu = d.querySelector('.feed.custom');
-    if (cu) cu.onclick = function () { act(function () { return demo.feed(p.id, Number(amt.value)); }, msg); };
+    if (big) big.onclick = function () { act(function () { return demo.feed(p.id); }, msg); };
     var ev = d.querySelector('.evolve');
     if (ev) ev.onclick = function () { act(function () { return demo.evolve(p.id); }, msg); };
     d.querySelectorAll('button.equip').forEach(function (b) { b.onclick = function () {
@@ -140,13 +174,12 @@
       gearAct(function () { rollToast(demo.roll(p.id, b.dataset.slot, b.classList.contains('tok'))); }, msg);
     }; });
     var uk = d.querySelector('button.usekey');
-    if (uk) uk.onclick = function () { gearAct(function () { var r = demo.useKey(p.id); toast('Unlocked the ' + r.slot + ' bonus slot on #' + p.id + '.'); }, msg); };
+    if (uk) uk.onclick = function () { gearAct(function () { var r = demo.useKey(p.id); toast('🔑 ' + r.slot + ' slot unlocked on #' + p.id); }, msg); };
     d.querySelectorAll('button.unequip').forEach(function (b) { b.onclick = function () { gearAct(function () { demo.unequip(p.id, b.dataset.slot); }, msg); }; });
-    return d;
   }
-  function gearAct(fn, msgEl) { try { fn(); render(); } catch (e) { msgEl.className = 'msg err'; msgEl.textContent = e.message; if (!e.demo) throw e; } }
+  function gearAct(fn, msgEl) { try { fn(); render(); renderDetail(); } catch (e) { msgEl.className = 'msg err'; msgEl.textContent = e.message; if (!e.demo) throw e; } }
   function act(fn, msgEl) {
-    try { var r = fn(); render(); var m = document.querySelector('#pet-' + r.pet.id + ' .msg'); if (m) { m.className = 'msg ok'; m.textContent = r.entry.msg + ' (play money)'; } lootToast(r.drop); return r; }
+    try { var r = fn(); render(); if (detailId != null && r.pet && r.pet.id === detailId) renderDetail(r.entry.msg, true); lootToast(r.drop); return r; }
     catch (e) { msgEl.className = 'msg err'; msgEl.textContent = e.message; if (!e.demo) throw e; }
   }
 
@@ -170,7 +203,7 @@
     }
     $('board').innerHTML = rows.length ? '<table class="board"><tr class="end"><td colspan="4">WAGMI</td></tr>' +
       show.map(function (r) { return r ? row(r) : '<tr class="gap"><td colspan="4">… ' + (rows.length - 20) + ' more …</td></tr>'; }).join('') +
-      '<tr class="end"><td colspan="4">NGMI</td></tr></table>' : '<p class="muted small">Hatch a pet to join the ranking.</p>';
+      '<tr class="end"><td colspan="4">NGMI</td></tr></table>' : '';
     var b = $('boardAll'); b.style.display = rows.length > 20 ? '' : 'none'; b.textContent = boardAll ? 'Show top 10 and bottom 10' : 'Show all ' + rows.length;
   }
   $('boardAll').onclick = function () { boardAll = !boardAll; render(); };

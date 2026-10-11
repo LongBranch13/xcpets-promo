@@ -1,35 +1,46 @@
 /* XCPETS PLAY DEMO core. PLAY MONEY ONLY: nothing here touches a chain, a wallet or real XCPETS.
  * The demo keeps a list of fake destroy rows (same shape as Counterparty API v2 rows, with pet: tags) and replays them
  * through the REAL GameCore.buildState (with the demo's cost/threshold config), so hatching, care, stages and the Mythic
- * evolve rule are the real game's code. Pet art comes from PetCore.generate(fake block hash, fake tx hash); the promo build's copy locks each species to one tier.
+ * evolve rule are the real game's code. Pet art comes from PetCore.generate(fake block hash, fake tx hash), with the real game's species odds.
  * Demo-only extra: gear is LOOT. Rarity decides slots (Common 0 / Uncommon 2 / Rare 4 / Legendary 5); items are rolled and are equipped by the player. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory;
   else root.DemoCore = factory(root.GameCore, root.PetCore, root.BonusGear);
 })(this, function (GameCore, PetCore, BonusGear) {
   'use strict';
-  var KEY = 'xcpets-play-demo-v3'; // v3 = the 69,000 curve; v2 saves (old 1,000,000 amounts) are ignored and the old key is removed
-  var START = 69000;     // play XCPETS in a fresh wallet = exactly one pet Egg to Mythic under the demo curve
+  var KEY = 'xcpets-play-demo-v3'; // same key: v3 saves (69,000 curve) migrate in place to v4 (meal curve), see migrate(); v2 saves (old 1,000,000 amounts) are ignored and the old key is removed
+  var START = 69069;     // play XCPETS in a fresh wallet = exactly one pet Egg to Mythic (69 hatch + 25 meals)
   var REFILL = 345000;   // free top-up per Refill click
   var PLAYER = 'play-wallet';
   // PLAY DEMO rules only (the real game keeps GameCore.COSTS / PET_THRESHOLDS / COMMUNITY_THRESHOLDS).
-  // Everything is the earlier 1M curve x 0.069. Hatch 69 (straight to Hatchling, cheap rerolls), Juvenile +10,350 (10,419),
-  // Adult +13,800 (24,219), Elder +17,250 (41,469), and Mythic is the 27,531 evolve burn at Elder (game-core adds the evolve
-  // burn to care before checking: 41,469 + 27,531 = 69,000). Egg to Mythic = 69,000.
-  // play/name are unused by the demo UI; scaled too and rounded to whole units (34.5 -> 35, 172.5 -> 173).
-  var DEMO_COSTS = { hatch: 69, feed: 7, feedPet: 7, play: 35, name: 173, evolve: 27531, roll: 345 };
-  var DEMO_THRESHOLDS = [0, 69, 10419, 24219, 41469, 69000];
+  // Meal pacing: every personal-pet feed is one meal whose size depends on the pet's stage (MEAL_SIZES). Hatch 69 (straight to Hatchling, cheap rerolls),
+  // Juvenile +3 meals (8,349), Adult +5 meals (22,149), Elder +7 meals (41,469), Mythic +10 meals (69,069). At Mythic care
+  // the Evolve button ascends it with a 0 play XCPETS pet:evolve row (no extra burn). Egg to Mythic = 69 + 25 meals = 69,069:
+  // at 3 meals a day that is day 9 (8.33 days).
+  // feedPet stays the 7 rules minimum so older saves' feed rows (any amount) keep their care; the demo enforces MEAL itself.
+  // play/name are unused by the demo UI.
+  // Stage-scaled meals: Hatchling 1,380 x 6 = 8,280; Juvenile 2,300 x 6 = 13,800; Adult 3,220 x 6 = 19,320; Elder 3,450 x 8 = 27,600,
+  // then a free Evolve. 26 meals; at 3 a day: Juvenile day 2, Adult day 4, Elder day 6, Mythic day 9. The last meal of a stage
+  // is capped to whatever is left to the next threshold (so migrated saves with odd care never overshoot a stage).
+  var MEAL_SIZES = [0, 1380, 2300, 3220, 3450]; // by current stage (Hatchling..Elder)
+  var MEAL = MEAL_SIZES[1];
+  var MEALS = [0, 0, 6, 6, 6, 8]; // meals to reach each stage from the one before (Egg->Hatchling is the hatch)
+  function careStage(care) { var k = 1; while (k < 4 && care >= DEMO_THRESHOLDS[k + 1]) k++; return k; }
+  function mealFor(care) { if (care >= DEMO_THRESHOLDS[5]) return 0; var k = careStage(care); return Math.min(MEAL_SIZES[k], DEMO_THRESHOLDS[k + 1] - care); }
+  function mealsUntil(care, target) { var n = 0; while (care < target) { care += mealFor(care); n++; } return n; }
+  var DEMO_COSTS = { hatch: 69, feed: 7, feedPet: 7, meal: MEAL, play: 35, name: 173, evolve: 0, roll: 345 };
+  var DEMO_THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];
   // Shared pet: 3x a personal pet, evenly 41,400 per stage, ascends on its own at 207,000 (no evolve burn).
   // Like the real game, EVERY valid play burn counts toward it.
   var DEMO_SHARED = [0, 41400, 82800, 124200, 165600, 207000];
   var RULES = { costs: DEMO_COSTS, petThresholds: DEMO_THRESHOLDS, communityThresholds: DEMO_SHARED };
-  // Loot: base slots by rarity (pet-core gearSlots, GEAR_RANKS order); free-token drops: 25% per stage-up action, 2% per feed of >= 690, max 1 per action.
+  // Loot: base slots by rarity (pet-core gearSlots, GEAR_RANKS order); free-token drops: 25% per stage-up action, 2% per meal, max 1 per action.
   var SLOTS = ['band', 'armor', 'cape', 'weapon', 'crown'];
   var LISTS = { band: 'BANDS', armor: 'ARMORS', cape: 'CAPES', weapon: 'WEAPONS', crown: 'CROWNS' };
   // SLOT ROLL: the player picks an unlocked slot and pays DEMO_COSTS.roll (or spends a free roll token) to roll one item for it.
-  // Free roll tokens: 25% per stage-up action, 2% per feed of >= 690 (max 1 per action). Each roll: 1% chance of a Slot Key.
+  // Free roll tokens: 25% per stage-up action, 2% per meal (every meal is >= bigFeedMin; max 1 per action). Each roll: 1% chance of a Slot Key.
   // A Slot Key permanently unlocks the pet's next bonus slot: face, then back, then feet (demo-only meme gear, see bonus-gear.js).
-  var DROP = { stageUp: 0.25, bigFeed: 0.02, bigFeedMin: 690, key: 0.01 };
+  var DROP = { stageUp: 0.25, bigFeed: 0.02, bigFeedMin: 7, key: 0.01 };
   var BONUS = ['face', 'back', 'feet'];
   // Bulk egg buys: each egg is its own pet:hatch burn row of the normal 69 (so it hatches straight to Hatchling under the real
   // rules); the pack discount is a play-money rebate on the wallet. Dozen = 12 for the price of 10; Case = a gross (144).
@@ -56,11 +67,11 @@
     for (var i = 0; i < 64; i++) s += Math.floor(rand() * 16).toString(16);
     return zeros ? new Array(zeros + 1).join('0') + s.slice(zeros) : s;
   }
-  function fresh() { return { v: 3, balance: START, refills: 0, rows: [], blockHashes: {}, height: 900000, inv: [], equip: {}, nextUid: 1, drops: [], released: [], tokens: 0, keys: 0, bonus: {} }; }
+  function fresh() { return { v: 4, balance: START, refills: 0, rows: [], blockHashes: {}, height: 900000, inv: [], equip: {}, nextUid: 1, drops: [], released: [], tokens: 0, keys: 0, bonus: {} }; }
 
   var artCache = {}; // hatchTx -> generated traits (pure function of the seed, so safe to share)
   // Feeding limit: each personal pet can be fed FEEDS_PER_DAY times per local calendar day (resets at local midnight).
-  // Only pet:feed:ID burns count (Feed button + Feed amount); evolve, hatch, gear rolls and shared-pet feeds don't.
+  // Only pet:feed:ID burns count (the Feed meal button); evolve, hatch, gear rolls and shared-pet feeds don't.
   var FEEDS_PER_DAY = 3;
   function dayKey(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); } // local date
   function Demo(storage, rand, now) {
@@ -72,12 +83,22 @@
   Demo.prototype.load = function () {
     try {
       var raw = this.storage && this.storage.getItem(KEY);
-      if (raw) { var s = JSON.parse(raw); if (s && s.v === 3) return s; }
-      // v2 saves used the old 1,000,000 curve: drop them (balances/care would be ~14x off) and start a fresh 69,000 wallet
+      if (raw) { var s = JSON.parse(raw); if (s && s.v === 4) return s; if (s && s.v === 3) return migrate(s); }
+      // v2 saves used the old 1,000,000 curve: drop them (balances/care would be ~14x off) and start a fresh wallet
       if (this.storage && this.storage.removeItem && this.storage.getItem('xcpets-play-demo-v2') != null) this.storage.removeItem('xcpets-play-demo-v2');
     } catch (e) { /* corrupt: start fresh */ }
     return fresh();
   };
+  // v3 -> v4 (meal pacing): keep every row, so pets keep their care and simply sit on the new thresholds. Pets that
+  // ascended under the 69,000 curve (care 41,469 + the 27,531 evolve burn = 69,000, just under the new 69,069) stay Mythic.
+  var OLD_RULES = { costs: { hatch: 69, feed: 7, feedPet: 7, play: 35, name: 173, evolve: 27531 }, petThresholds: [0, 69, 10419, 24219, 41469, 69000], communityThresholds: DEMO_SHARED };
+  function migrate(s) {
+    var was = GameCore.buildState(s.rows || [], OLD_RULES).pets, now = GameCore.buildState(s.rows || [], RULES).pets;
+    s.mythic = s.mythic || [];
+    was.forEach(function (p, i) { if (p.ascended && !(now[i] && now[i].ascended) && s.mythic.indexOf(p.id) < 0) s.mythic.push(p.id); });
+    s.v = 4;
+    return s;
+  }
   Demo.prototype.save = function () { if (this.storage) this.storage.setItem(KEY, JSON.stringify(this.s)); };
   Demo.prototype.reset = function () { this.s = fresh(); this.save(); };
   Demo.prototype.refill = function () { this.s.balance = round8(this.s.balance + REFILL); this.s.refills++; this.save(); return this.s.balance; };
@@ -162,9 +183,9 @@
     return tx;
   };
   /** One fake burn plus its loot roll, saved together in ONE write (a reload can't re-roll a drop). */
-  Demo.prototype.burn = function (amount, tag, petId) {
+  Demo.prototype.burn = function (amount, tag, petId, zeroOk) {
     amount = Number(amount);
-    if (!(amount > 0) || !isFinite(amount)) err('Enter an amount above 0.');
+    if (!(amount > 0 || (zeroOk && amount === 0)) || !isFinite(amount)) err('Enter an amount above 0.');
     if (round8(amount) !== amount) err('At most 8 decimals.');
     if (amount > this.s.balance) err('Not enough play XCPETS. Hit Refill (free).');
     var before = petId != null ? (this.pet(petId) || { stage: 0 }).stage : 0;
@@ -204,7 +225,12 @@
     if (!this.pet(id)) err('No such pet.');
     var today = dayKey(this.now()), used = this.feedsToday(id);
     if (used >= FEEDS_PER_DAY) err('Fed ' + FEEDS_PER_DAY + '/' + FEEDS_PER_DAY + ' today, back tomorrow.');
-    if (Number(amount) < DEMO_COSTS.feedPet) err('Feeding needs at least ' + DEMO_COSTS.feedPet + ' play XCPETS.');
+    var p0 = this.pet(id);
+    if (p0.ascended) err('Already Mythic.');
+    if (p0.care >= DEMO_THRESHOLDS[5]) err('Full! Tap Evolve to Mythic.');
+    var meal = mealFor(p0.care);
+    if (amount == null) amount = meal;
+    if (Number(amount) !== meal) err('This meal is exactly ' + meal.toLocaleString('en-US') + ' play XCPETS.');
     (this.s.feedDays = this.s.feedDays || {})[id] = { day: today, n: used + 1 }; // saved by burn() in the same write
     var log = ((this.s.feedLog = this.s.feedLog || {})[id] = this.s.feedLog[id] || {}), prevLog = log[today], prevLast = (this.s.lastFed = this.s.lastFed || {})[id];
     log[today] = used + 1; this.s.lastFed[id] = +this.now();
@@ -213,14 +239,14 @@
     r.state.byId[id].feedsToday = used + 1;
     return { pet: r.state.byId[id], entry: r.entry, drop: r.drop };
   };
-  Demo.prototype.evolve = function (id, amount) {
-    var p = this.pet(id), cost = DEMO_COSTS.evolve, need = DEMO_THRESHOLDS[5];
-    amount = amount == null ? cost : Number(amount);
+  /** EVOLVE: once care reaches the Mythic threshold (fed by meals), a free pet:evolve:ID row (0 play XCPETS, no extra burn)
+   *  ascends the pet through the real game's evolve rule. */
+  Demo.prototype.evolve = function (id) {
+    var p = this.pet(id), need = DEMO_THRESHOLDS[5];
     if (!p) err('No such pet.');
     if (p.ascended) err('Already Mythic.');
-    if (amount < cost) err('Evolving costs at least ' + cost.toLocaleString('en-US') + ' play XCPETS.');
-    if (p.care + amount < need) err('Needs ' + (need - cost).toLocaleString('en-US') + ' care before the ' + cost.toLocaleString('en-US') + ' evolve burn. Feed it more first.');
-    var r = this.burn(amount, 'pet:evolve:' + id, id);
+    if (p.care < need) err('Needs ' + need.toLocaleString('en-US') + ' care to evolve (' + mealsUntil(p.care, need) + ' more meals). Keep feeding.');
+    var r = this.burn(0, 'pet:evolve:' + id, id, true);
     return { pet: r.state.byId[id], entry: r.entry, drop: r.drop };
   };
   /** Bulk hatch: n independent eggs (fresh fake block hash + burn id each), ONE save. Each egg is a stage-up (Egg -> Hatchling),
@@ -352,13 +378,15 @@
   Demo.prototype.state = function () {
     var self0 = this, today = dayKey(this.now()), st = GameCore.buildState(this.s.rows, RULES), T = DEMO_THRESHOLDS, bh = this.s.blockHashes, s = this.s, rel = s.released || [];
     st.pets = st.pets.filter(function (p) { return rel.indexOf(p.id) < 0; });
+    st.pets.forEach(function (p) { if ((s.mythic || []).indexOf(p.id) >= 0) { p.ascended = true; p.stage = 5; p.stageName = 'Mythic'; } }); // v3 Mythics
     st.byId = {};
     st.pets.forEach(function (p) {
       var ck = p.hatchTx; p.art = artCache[ck] || (artCache[ck] = PetCore.generate({ blockHash: bh[p.hatchBlock], petId: p.hatchTx }));
-      p.next = p.stage < 4 ? T[p.stage + 1] : (p.ascended ? null : T[5] - DEMO_COSTS.evolve); // at Elder: care to feed before evolving
+      p.next = p.ascended ? null : T[Math.min(5, p.stage + 1)]; // at Elder: meals fill care up to the Mythic threshold, then Evolve
       p.prev = T[p.stage] || 0;
       p.progress = (p.next == null || p.next <= p.prev) ? 1 : Math.max(0, Math.min(1, (p.care - p.prev) / (p.next - p.prev)));
-      p.canEvolve = !p.ascended && p.stage === 4;
+      p.canEvolve = !p.ascended && p.stage === 4 && p.care >= T[5];
+      p.mealsLeft = p.ascended ? 0 : mealsUntil(p.care, T[5]); p.mealsNext = p.next == null ? 0 : mealsUntil(p.care, p.next); p.meal = p.ascended ? 0 : mealFor(p.care);
       st.byId[p.id] = p;
       var fd = (s.feedDays || {})[p.id]; p.feedsToday = fd && fd.day === today ? fd.n : 0; p.feedLimit = FEEDS_PER_DAY;
       var lfm = (s.lastFed || {})[p.id]; if (lfm == null) { (s.lastFed = s.lastFed || {})[p.id] = +self0.now(); } // older saves: start the clock now
@@ -382,7 +410,7 @@
     return st;
   };
 
-  Demo.COSTS = DEMO_COSTS; Demo.THRESHOLDS = DEMO_THRESHOLDS; Demo.SHARED = DEMO_SHARED; Demo.SLOTS = SLOTS; Demo.DROP = DROP; Demo.BONUS = BONUS; Demo.BONUS_ITEMS = BONUS_ITEMS; Demo.EXTRA = EXTRA; Demo.BULK = BULK; Demo.FEEDS_PER_DAY = FEEDS_PER_DAY;
+  Demo.COSTS = DEMO_COSTS; Demo.THRESHOLDS = DEMO_THRESHOLDS; Demo.SHARED = DEMO_SHARED; Demo.SLOTS = SLOTS; Demo.DROP = DROP; Demo.BONUS = BONUS; Demo.BONUS_ITEMS = BONUS_ITEMS; Demo.EXTRA = EXTRA; Demo.BULK = BULK; Demo.FEEDS_PER_DAY = FEEDS_PER_DAY; Demo.MEAL = MEAL; Demo.MEALS = MEALS; Demo.MEAL_SIZES = MEAL_SIZES; Demo.mealFor = mealFor;
   Demo.KEY = KEY; Demo.START = START; Demo.REFILL = REFILL; Demo.PLAYER = PLAYER;
   return Demo;
 });

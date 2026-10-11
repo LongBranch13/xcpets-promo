@@ -20,8 +20,22 @@ button.btn { border:0; } button.btn[disabled] { opacity:.45; cursor:not-allowed;
 button.q { background:#2c2440; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; }
 .pets { display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:16px; margin-top: 12px; }
 .pet { background: var(--bg2); border:1px solid var(--line); border-radius: 14px; padding: 14px; }
-.pet .top { display:grid; grid-template-columns: 128px 1fr; gap: 12px; }
-.pet canvas { width:128px; height:128px; }
+.pets { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.pet.card { cursor: pointer; display:flex; flex-direction:column; gap:8px; padding:10px; transition: transform .1s, border-color .1s; }
+.pet.card:hover, .pet.card:focus { border-color: var(--acc2); transform: translateY(-2px); outline: none; }
+.pet .sprite { width:100%; aspect-ratio:1; height:auto; image-rendering: crisp-edges; image-rendering: pixelated; border-radius: 10px; background:#0b0912; display:block; }
+.pet h4 { margin:0 0 4px; font-size:16px; }
+.chips { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0; }
+.chip { font-size:11px; line-height:1.5; padding:0 7px; border-radius:99px; background:#2a2140; color:var(--ink); white-space:nowrap; }
+.chip.stg { background:#3a1500; color:#ffd9b8; } .chip.warn { background:#2a1620; color:#ff7a9a; }
+.chips .pill { font-size:11px; padding:0 7px; }
+.traits .chip { color: var(--dim); } .gearchip { border:1px solid var(--line); }
+.nav a.rulesLink { color: var(--acc2); }
+#zoomBox .box { max-width: 620px; position: relative; max-height: 92vh; overflow:auto; text-align:left; } #zoomBox h2 { text-align:center; }
+#zoomCanvas { width: 384px; height: 384px; max-width: 80vw; max-height: 80vw; image-rendering: crisp-edges; image-rendering: pixelated; display:block; margin: 8px auto; }
+#zoomClose { position:absolute; top:10px; right:12px; }
+.zoomnav { justify-content:center; gap:12px; margin-right:36px; margin-left:36px; } .zoomnav h2 { margin:0; }
+#zoomInfo { text-align:left; font-size:14px; } #zoomInfo .pill { margin: 2px; }
 .pet h4 { margin:0 0 4px; font-size: 18px; }
 .bar { height: 10px; background:#0b0912; border:1px solid var(--line); border-radius: 99px; overflow:hidden; margin: 6px 0 2px; }
 .bar > i { display:block; height:100%; background: linear-gradient(90deg, var(--acc), var(--acc2)); }
@@ -57,78 +71,74 @@ select.pick { background:#0b0912; color:var(--ink); border:1px solid var(--line)
 table.log { width:100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
 table.log td, table.log th { border-bottom:1px solid var(--line); padding: 5px 6px; text-align:left; }
 table.log code { font-size: 12px; }
-@media (max-width: 520px) { .pet .top { grid-template-columns: 96px 1fr; } .pet canvas { width:96px; height:96px; } .bal { font-size: 24px; } }
+@media (max-width: 520px) {  .bal { font-size: 24px; } }
 </style>
 </head>
 <body>
 <header class="nav">
   <a class="brand" href="index.html"><img src="img/logo.png" alt="XCPETS logo: a pixel Pepe pet" width="28" height="28"> XCPETS</a>
   <nav>
-    <a href="index.html#how">How it works</a><a href="index.html#cast">The cast</a><a href="index.html#gallery">Gallery</a><a href="generator.html">Generator</a><a href="play.html">Play</a>
+    <a href="index.html#cast">The cast</a><a href="index.html#gallery">Gallery</a><a href="generator.html">Generator</a><a href="play.html">Play</a><a href="how-it-works.html" class="rulesLink"><b>How It Works</b></a>
   </nav>
 </header>
 <main>
-  <div class="playbar" role="note">PLAY MONEY DEMO. Everything here uses free <b>play XCPETS</b>: not real XCPETS, not on-chain, no wallet, nothing to buy or sell. It is saved only in this browser.</div>
+  <div class="playbar" role="note">PLAY MONEY · not real XCPETS · saved in this browser</div>
 
   <section class="panel" id="walletPanel">
     <div class="wallet">
-      <div><div class="muted small">Your play wallet (play money)</div><div class="bal" id="bal">0 <small>play XCPETS</small></div></div>
-      <div class="row"><button class="btn" id="refill">Refill +345,000 (free)</button><button class="btn ghost" id="reset">Reset demo</button></div>
+      <div><div class="muted small">Wallet</div><div class="bal" id="bal">0 <small>play XCPETS</small></div></div>
+      <div class="row"><button class="btn" id="refill">Refill +345,000</button><button class="btn ghost" id="reset">Reset</button></div>
     </div>
-    <p class="muted small" id="rules"></p>
-    <p class="small"><a href="rules.html">Full rules and odds reference (species, gear, backgrounds, patterns, palettes, eyes)</a></p>
   </section>
 
   <section class="panel" id="hatchPanel">
-    <h2>Hatch a pet</h2>
-    <p class="muted">Burn play XCPETS with the tag <code>pet:hatch</code>. The pet is rolled from a fresh random fake block hash and burn id by the game's pet generator. The burn amount becomes its first care, and in this demo the 69 minimum hatches it straight to Hatchling, so rerolling for a rarer pet is cheap. Pets start with no gear: rarity decides how many gear slots a pet has (Common 0, Uncommon 2, Rare 4, Legendary 5) and you roll gear for them.</p>
+    <h2>Hatch</h2>
     <div class="row"><input class="amt" id="hatchAmt" type="number" min="69" step="1" value="69" aria-label="Hatch amount in play XCPETS">
-      <button class="q" data-h="69">69 (min)</button>
-      <button class="btn" id="hatch">Hatch</button>
-      <button class="btn ghost bulk" data-bulk="dozen">Dozen eggs: 12 for 690</button>
-      <button class="btn ghost bulk" data-bulk="case">Case of eggs: 144 for 6,900</button></div>
-    <p class="muted small">Bulk buys: a dozen is 12 eggs for the price of 10; a case is a gross (144) for 6,900, about 31% off. Every egg is its own normal hatch.</p>
+            <button class="btn" id="hatch">Hatch (69)</button>
+      <button class="btn ghost bulk" data-bulk="dozen">12 eggs (690)</button>
+      <button class="btn ghost bulk" data-bulk="case">144 eggs (6,900)</button></div>
     <div class="msg" id="hatchMsg" aria-live="polite"></div>
   </section>
 
   <section class="panel" id="petsPanel">
-    <h2>My pets</h2>
-    <p class="howto"><b>How to upgrade:</b> tap the big <b>Feed</b> button on a pet to reach its next stage. Its rarity sets its gear slots (Common 0, Uncommon 2, Rare 4, Legendary 5), open from Hatchling. Pick a slot and tap <b>Roll (345)</b> to roll an item for it (empty slots equip it right away); rarer pets roll better gear. Stage-ups (25%) and feeds of 690+ (2%) can drop a <b>free roll token</b>, and every roll has a 1% chance of a <b>Slot Key</b> that unlocks a bonus slot (face, then back, then feet) for meme gear. At <b>Elder</b>, tap <b>Evolve</b> for Mythic. Out of play money? Tap <b>Refill</b>.</p>
-    <p class="muted small">Demo rules: the 69 hatch makes a Hatchling, then Juvenile at 10,419 care (+10,350), Adult at 24,219 (+13,800), Elder at 41,469 (+17,250). At Elder, an evolve burn of 27,531 (<code>pet:evolve:ID</code>) makes it Mythic. Egg to Mythic: 69,000 play XCPETS. Gear slots by rarity (the game's own rule, open from Hatchling): Common 0, Uncommon 2 (band, armor), Rare 4 (+ cape, weapon), Legendary 5 (+ crown). Rolls use the game's gear rule too: a pet rolls items up to its own rarity, and items of its own rarity are 4x as likely. Bonus gear: Counterparty coin (Common), HODL banner and Stack of sats (Uncommon), Paper-hands cape and Hard-wallet amulet (Rare), Beam eyes (Legendary); if a bonus slot has no item at or below the pet's rarity, the slot's lowest-rarity item is rolled. A gear roll is a play burn, so it also feeds the shared pet.</p>
-    <h3>Inventory <span class="muted small">(gear you own; rarity colour = how rare the piece is)</span></h3>
-    <p class="small">Free roll tokens: <b id="tokens">0</b> · Slot Keys: <b id="keys">0</b></p>
+    <h2>My Pets</h2>
+    <h3>Inventory</h3>
+    <p class="small">🎟️ <b id="tokens">0</b> · 🔑 <b id="keys">0</b></p>
     <div class="inv" id="inv"></div>
     <div class="row small" id="petTools">Show <select id="fTier" aria-label="Filter by rarity"><option value="">all rarities</option><option value="3">Legendary</option><option value="2">Rare</option><option value="1">Uncommon</option><option value="0">Common</option></select>
       sort <select id="fSort" aria-label="Sort pets"><option value="new">newest first</option><option value="tier">rarest first</option><option value="stage">highest stage first</option></select>
       <span class="muted" id="petCount"></span> <button class="q" id="pgPrev">&lsaquo; Prev</button> <span id="pgInfo"></span> <button class="q" id="pgNext">Next &rsaquo;</button></div>
     <div class="pets" id="pets"></div>
-    <p class="muted" id="noPets">No pets yet. Hatch one above.</p>
+    <p class="muted" id="noPets">No pets yet.</p>
   </section>
 
   <section class="panel">
-    <h2>The shared pet</h2>
-    <div class="mystery"><div class="q" aria-label="Unrevealed shared pet">?</div><p class="muted">Every burn also feeds one shared pet that everyone grows together. What it is hasn't been revealed yet. In this demo it grows from your play burns and levels 3x slower than a personal pet: 41,400 per stage, Mythic at 207,000, no evolve burn needed.</p></div>
+    <h2>Shared Pet</h2>
+    <div class="mystery"><div class="q" aria-label="Unrevealed shared pet">?</div></div>
     <div class="bar" aria-label="shared pet progress to next stage"><i id="sharedBar" style="width:0%"></i></div>
     <div class="small muted" id="sharedTxt"></div>
     <div class="row" style="margin-top:8px"><input class="amt" id="sharedAmt" type="number" min="7" step="1" value="690" aria-label="Shared pet feed amount">
-      <button class="btn" id="sharedFeed">Feed the shared pet</button> <span class="muted small">tag <code>pet:feed</code>, 7 min</span></div>
+      <button class="btn" id="sharedFeed">Feed</button></div>
     <div class="msg" id="sharedMsg" aria-live="polite"></div>
   </section>
 
   <section class="panel" id="boardPanel">
-    <h2>WAGMI to NGMI <span class="muted small">(one power ranking of your pets in this browser; cosmetic only)</span></h2>
-    <p class="muted small">Top = WAGMI: pets on a feeding streak, by streak score (each consecutive fed day = 1, a full 3/3 day = 1.5). Middle: pets with no streak yet. Bottom = NGMI: neglected pets (a full day or more missed since the last meal), the most neglected dead last. One feed clears neglect.</p>
+    <h2>Ranking</h2>
     <div id="board"></div>
     <button class="q" id="boardAll" style="display:none"></button>
   </section>
 
   <section class="panel">
-    <h2>Burn log <span class="muted small">(play money)</span></h2>
+    <h2>Burn log</h2>
     <table class="log"><thead><tr><th>#</th><th>Tag</th><th>Amount</th><th>Result</th></tr></thead><tbody id="log"></tbody></table>
   </section>
 </main>
 
 <div id="toasts" aria-live="polite"></div>
+<div class="reveal" id="zoomBox" role="dialog" aria-modal="true" aria-labelledby="zoomTitle">
+  <div class="box"><button class="q" id="zoomClose" aria-label="Close">&times;</button><div class="row zoomnav"><button class="q" id="zoomPrev" aria-label="Previous pet">&lsaquo; Prev</button><h2 id="zoomTitle"></h2><button class="q" id="zoomNext" aria-label="Next pet">Next &rsaquo;</button></div><div class="small muted" id="zoomPos" style="text-align:center"></div>
+    <canvas class="pixel" id="zoomCanvas" width="32" height="32"></canvas><div id="zoomInfo"></div></div>
+</div>
 <div class="reveal" id="bulkReveal" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
   <div class="box bulkbox"><h2 id="bulkTitle">Batch hatched</h2><p id="bulkSummary" class="small"></p><div id="bulkGrid" class="bulkgrid"></div>
     <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="bulkClose">Keep them</button><button class="q" id="bulkReleaseCommons">Release all Commons from this batch</button></div></div>
