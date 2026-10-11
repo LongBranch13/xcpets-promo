@@ -421,15 +421,15 @@
       // v3.11: bigger head (rows 0-8, 15 px wide; the neck is one row shorter so body/gear rows are unchanged), eyes moved up
       // two rows, and a bolder full-length beak: light-red top highlight ('7' = accent lightened), red upper bill, ink smirk
       // line, red lower bill with a dark-red ('6') underside. Headband moved up to row 1 so it never covers the lids.
-      // v3.14: rounder head (stepped crown, one column wider on the left), grey lids cut to 2 px per eye (over the pupil side),
-      // and the eyes spaced 3 px apart instead of 2 (eyeSplit 14).
+      // v3.14: rounder head (stepped crown, one column wider on the left) and ONE side-profile eye (4x3 white, pupil toward
+      // the beak, 2-px grey lid over the pupil side) set forward on the head above the red cheek stripe.
       map: [
         '...........bbbbbbb........',
-        '.........bbbbbbbbbbb......',
-        '........bb55bbbbb55bbb....',
-        '.......bbEEPEbbbEEPEbb7777',
-        '.......bbEEPEbbbEEPEbaaaaa',
-        '.......bbaaaabbbaaaaaaaaa7',
+        '.........bbbbbbbb55b......',
+        '........bbbbbbbEEPEbbb....',
+        '.......bbbbbbbbEEPEbbb7777',
+        '.......bbbbbbbbEEPEbbaaaaa',
+        '.......bbbbbbbbaaaaaaaaaa7',
         '........bbbbbbbbbbmmmmmmmm',
         '.........bbbbbbbbaaaaaaa6.',
         '...........bbbbbb666666...',
@@ -1191,7 +1191,7 @@
   function drawFaceExtras(cv, pet, a, frame) {
     a.eyes.forEach(function (b) {
       var outer = ((b.left != null ? b.left : b.cx < 16)) ? b.minX - 1 : b.maxX + 1;
-      if (pet.cheeks && cv.isSil(outer, b.maxY + 2)) { cv.paint(outer, b.maxY + 2, FIXED.p); cv.paint((b.left != null ? b.left : b.cx < 16) ? outer + 1 : outer - 1, b.maxY + 2, FIXED.p); }
+      if (pet.cheeks && !(byId(SPECIES, pet.species) || {}).noCheeks && cv.isSil(outer, b.maxY + 2)) { cv.paint(outer, b.maxY + 2, FIXED.p); cv.paint((b.left != null ? b.left : b.cx < 16) ? outer + 1 : outer - 1, b.maxY + 2, FIXED.p); }
       if (pet.eyes === 'beam') {
         var hasBeam = false;
         for (var yy = b.minY; yy <= b.maxY; yy++) for (var xx = b.minX; xx <= b.maxX; xx++) if (cv.getKey(xx, yy) === 'beam') hasBeam = true;
@@ -1277,7 +1277,9 @@
   };
   function drawCrown(cv, pet, a, frame, sp) {
     var map = CROWN_MAPS[pet.crown] || CROWN_MAPS['gold-crown'];
-    if (pet.crown === 'flame-crown' && frame % 2) map = ['.o.oo.o.'].concat(map.slice(1));
+    // v3.14: the flame tips sway once per bounce cycle, on the landed rest frame (3) only. Frames 0-2 (rest and both bounce
+    // frames) share one shape, so the crown never swaps shape on the bounce; only the two outer tips lean in.
+    if (pet.crown === 'flame-crown' && frame === 3) map = ['.o.oo.o.'].concat(map.slice(1));
     // crownSink: narrow-domed heads (Wojak) wear the crown a little lower so it sits on the dome
     // crownCol: off-centre heads (side-view Dodo) centre the crown over that sprite column
     var cx0 = (sp && sp.gear && sp.gear.crownCol != null) ? a.x0 + sp.gear.crownCol - 4 : 12;
