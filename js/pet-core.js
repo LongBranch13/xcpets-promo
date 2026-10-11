@@ -1138,6 +1138,8 @@
   }
   /** Clear eyeglasses (species with glasses: true): an ink frame one pixel outside each eye box, a bridge and short
    *  temple arms. Only frame pixels are drawn, so the eyes stay visible through the clear lenses. */
+  // eye pixels already recoloured by a rolled eye trait (beam / star): glasses must keep them, not glaze them over as lens
+  var TRAIT_EYE = { beam: 1, beamlite: 1, gold: 1, eyegold: 1 };
   function drawGlasses(cv, eyes) {
     if (eyes.length < 2) return;
     var L = eyes[0].cx < eyes[1].cx ? eyes[0] : eyes[1], R = L === eyes[0] ? eyes[1] : eyes[0], x, y;
@@ -1145,7 +1147,7 @@
       var x0 = b.minX - 1, x1 = Math.max(b.maxX + 1, b.minX + 3), y0 = b.minY - 1, y1 = Math.max(b.maxY + 1, b.minY + 2); // lens >= 3x2
       for (x = x0; x <= x1; x++) { cv.setKey(x, y0, 'frame'); cv.setKey(x, y1, 'frame'); }
       for (y = y0; y <= y1; y++) { cv.setKey(x0, y, 'frame'); cv.setKey(x1, y, 'frame'); }
-      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) { var k = cv.getKey(x, y); if (k !== 'eye' && k !== 'pupil' && k !== 'ink') cv.setKey(x, y, 'lens'); }
+      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) { var k = cv.getKey(x, y); if (k !== 'eye' && k !== 'pupil' && k !== 'ink' && !TRAIT_EYE[k]) cv.setKey(x, y, 'lens'); }
     });
     for (x = L.maxX + 2; x <= R.minX - 2; x++) cv.setKey(x, L.minY, 'frame');
     for (x = L.minX - 2; x >= L.minX - 4 && cv.isSil(x, L.minY - 1); x--) cv.setKey(x, L.minY - 1, 'frame');
@@ -1158,7 +1160,7 @@
     if (eyes.length < 2) return;
     var lens = eyes.map(function (b) {
       var x0 = b.minX - 1, x1 = Math.max(b.maxX + 1, b.minX + 3), y0 = b.minY - 1, y1 = Math.max(b.maxY + 1, b.minY + 2), pupil = false, x, y;
-      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) if (cv.getKey(x, y) === 'pupil') pupil = true;
+      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) if (cv.getKey(x, y) === 'pupil' || cv.getKey(x, y) === 'beam' || cv.getKey(x, y) === 'gold') pupil = true;
       return { x0: x0 + 1, y0: y0 + 1, w: x1 - x0 - 1, h: y1 - y0 - 1, pupil: pupil };
     });
     var A = lens[0], B = lens[1];

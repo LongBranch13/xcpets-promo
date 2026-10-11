@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XCPETS — Play demo (play money)</title>
+<meta name="description" content="Play the XCPETS pet game with free play money: hatch, feed and evolve 8-bit meme pets. Not real XCPETS, nothing on-chain.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.playbar { background:#3a1500; border:1px solid var(--acc); color:#ffd9b8; border-radius:12px; padding:10px 14px; margin:14px 0; font-weight:700; }
+.wallet { display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; }
+.bal { font: 800 30px/1.1 ui-monospace, Menlo, Consolas, monospace; color: var(--acc2); }
+.bal small { font-size: 14px; color: var(--dim); font-weight: 700; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+input.amt { background:#0b0912; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:8px 10px; width: 150px; font: 15px ui-monospace, Menlo, monospace; }
+button { cursor:pointer; font: inherit; }
+button.btn { border:0; } button.btn[disabled] { opacity:.45; cursor:not-allowed; }
+button.q { background:#2c2440; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; }
+.pets { display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:16px; margin-top: 12px; }
+.pet { background: var(--bg2); border:1px solid var(--line); border-radius: 14px; padding: 14px; }
+.pet .top { display:grid; grid-template-columns: 128px 1fr; gap: 12px; }
+.pet canvas { width:128px; height:128px; }
+.pet h4 { margin:0 0 4px; font-size: 18px; }
+.bar { height: 10px; background:#0b0912; border:1px solid var(--line); border-radius: 99px; overflow:hidden; margin: 6px 0 2px; }
+.bar > i { display:block; height:100%; background: linear-gradient(90deg, var(--acc), var(--acc2)); }
+.gear { font-size: 13px; color: var(--dim); margin: 6px 0; }
+.msg { min-height: 1.4em; font-size: 14px; margin-top: 6px; }
+.msg.err { color: #ff8a8a; } .msg.ok { color: #7fe0a8; }
+.reveal { position: fixed; inset: 0; background: rgba(5,3,10,.86); display:none; align-items:center; justify-content:center; z-index: 20; padding: 20px; }
+.reveal.on { display:flex; }
+.reveal .box { background: var(--panel); border:1px solid var(--line); border-radius: 18px; padding: 22px; text-align:center; max-width: 380px; width:100%; }
+.reveal canvas { width: 240px; height: 240px; margin: 8px auto; }
+.mystery { display:flex; gap:14px; align-items:center; }
+.mystery .q { width:72px; height:72px; border-radius:12px; border:1px dashed var(--line); display:flex; align-items:center; justify-content:center; font: 800 40px ui-monospace, monospace; color: var(--dim); background: var(--bg2); }
+table.log { width:100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+table.log td, table.log th { border-bottom:1px solid var(--line); padding: 5px 6px; text-align:left; }
+table.log code { font-size: 12px; }
+@media (max-width: 520px) { .pet .top { grid-template-columns: 96px 1fr; } .pet canvas { width:96px; height:96px; } .bal { font-size: 24px; } }
+</style>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="index.html"><img src="img/logo.png" alt="XCPETS logo: a pixel Pepe pet" width="28" height="28"> XCPETS</a>
+  <nav>
+    <a href="index.html#how">How it works</a><a href="index.html#cast">The cast</a><a href="index.html#gallery">Gallery</a><a href="generator.html">Generator</a><a href="play.html">Play</a>
+  </nav>
+</header>
+<main>
+  <div class="playbar" role="note">PLAY MONEY DEMO. Everything here uses free <b>play XCPETS</b>: not real XCPETS, not on-chain, no wallet, nothing to buy or sell. It is saved only in this browser.</div>
+
+  <section class="panel" id="walletPanel">
+    <div class="wallet">
+      <div><div class="muted small">Your play wallet (play money)</div><div class="bal" id="bal">0 <small>play XCPETS</small></div></div>
+      <div class="row"><button class="btn" id="refill">Refill +5,000,000 (free)</button><button class="btn ghost" id="reset">Reset demo</button></div>
+    </div>
+    <p class="muted small" id="rules"></p>
+  </section>
+
+  <section class="panel" id="hatchPanel">
+    <h2>Hatch a pet</h2>
+    <p class="muted">Burn play XCPETS with the tag <code>pet:hatch</code>. The pet is rolled from a fresh random fake block hash and burn id by the same generator as the real game, so species odds, rarity tiers and gear are the real ones. The burn amount becomes its first care: 20,000 care hatches the egg straight away.</p>
+    <div class="row"><input class="amt" id="hatchAmt" type="number" min="10000" step="1000" value="20000" aria-label="Hatch amount in play XCPETS">
+      <button class="q" data-h="10000">10,000 (min)</button><button class="q" data-h="20000">20,000 (hatches)</button>
+      <button class="btn" id="hatch">Hatch</button></div>
+    <div class="msg" id="hatchMsg" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="petsPanel">
+    <h2>My pets</h2>
+    <p class="muted small">Care sets the stage: Egg 0, Hatchling 20,000, Juvenile 100,000, Adult 400,000, Elder 1,500,000. Mythic needs 5,000,000 care <i>and</i> an evolve burn (<code>pet:evolve:ID</code>, 50,000 min). Gear unlocks one piece per stage up to the tier cap.</p>
+    <div class="pets" id="pets"></div>
+    <p class="muted" id="noPets">No pets yet. Hatch one above.</p>
+  </section>
+
+  <section class="panel">
+    <h2>The shared pet</h2>
+    <div class="mystery"><div class="q" aria-label="Unrevealed shared pet">?</div><p class="muted">Every burn in the real game also feeds one shared pet that everyone grows together. What it is hasn't been revealed yet.</p></div>
+  </section>
+
+  <section class="panel">
+    <h2>Burn log <span class="muted small">(play money)</span></h2>
+    <table class="log"><thead><tr><th>#</th><th>Tag</th><th>Amount</th><th>Result</th></tr></thead><tbody id="log"></tbody></table>
+  </section>
+</main>
+
+<div class="reveal" id="reveal" role="dialog" aria-modal="true" aria-labelledby="revealTitle">
+  <div class="box"><h2 id="revealTitle">Hatching…</h2><canvas class="pixel" id="revealCanvas" width="32" height="32"></canvas>
+    <p id="revealText" class="muted"></p><button class="btn" id="revealClose">Nice!</button></div>
+</div>
+
+<footer class="panel" style="max-width:1100px;margin:22px auto"><p class="muted small">Play-money demo. Not real XCPETS, not on-chain. <a href="index.html">Home</a> · <a href="generator.html">Generator</a></p></footer>
+<script src="js/pet-core.js"></script>
+<script src="js/game-core.js"></script>
+<script src="js/demo-core.js"></script>
+<script src="js/play.js"></script>
+</body>
+</html>
