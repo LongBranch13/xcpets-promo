@@ -102,6 +102,27 @@ Bonus-slot rolls cost the same 345 (or a token) and use the same stage odds, lim
 | Back | HODL banner (Uncommon), Paper-hands cape (Rare) |
 | Feet | Counterparty coin (Common), Stack of sats (Uncommon); Sarutobi also Smoke-bomb sandals (Rare) |
 
+## Hunger meter
+Each pet card has a hunger meter. It is full right after a meal and drains evenly to empty 24 hours after the last one. Every feed refills it, and a hatch counts as the first meal. It's cosmetic only: an empty meter changes nothing.
+
+## WAGMI to NGMI (power ranking)
+All your pets in this browser are ranked in one list, with **WAGMI** at the top and **NGMI** at the bottom. It's cosmetic only.
+
+1. **Pets on a streak** come first, by streak score. A streak counts consecutive days with at least one feed. It ends today, or yesterday if you haven't fed the pet yet today. Each fed day is worth 1, and a full 3/3 day is worth 1.5.
+2. **Neutral pets** come next: no streak, but not neglected yet.
+3. **Neglected pets** (2 or more calendar days since the last meal) come last, sorted by days since the last meal, so the most neglected pet is dead last. One feed clears neglect.
+
+With more than 20 pets, the list shows the top 10 and bottom 10, with a **Show all** toggle.
+
+| Badge | Earned by |
+|---|---|
+| Legendary drip | A Legendary pet, or 3+ Rare/Legendary gear items equipped |
+| Fire takes | A streak of 7+ days |
+| Roast mode | A streak of 3+ days. The pet roasts the lowest-ranked other pet in this browser by name (the line rotates daily) |
+| Shitpost encounters | 2 days since the last meal, with a daily flavor line such as "found a suspicious hat", "argued with a pigeon" or "declared itself a final boss" |
+| Flop era | 3 to 6 days since the last meal |
+| Cursed tweet thread | 7+ days since the last meal |
+
 ## The shared community pet
 There's also a mystery community pet that everyone grows together. Nobody knows what it is yet. Every play burn helps it grow, including hatches, feeds and rolls, and **Feed the shared pet** sends play XCPETS straight to it. It grows three times slower than a personal pet: 41,400 per stage, 207,000 total to Mythic. In the demo, its progress is saved in your browser only.
 

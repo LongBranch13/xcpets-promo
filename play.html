@@ -45,6 +45,10 @@ select.pick { background:#0b0912; color:var(--ink); border:1px solid var(--line)
 .bulkgrid .egg { border:1px solid var(--line); border-radius:8px; padding:3px; text-align:center; font-size:10px; }
 .bulkgrid .egg canvas { width:48px; height:48px; image-rendering: pixelated; }
 .bulkgrid .egg.t2 { border-color:#4f9dff; box-shadow:0 0 6px #4f9dff; } .bulkgrid .egg.t3 { border-color:#ffc93c; box-shadow:0 0 8px #ffc93c; }
+.board { width:100%; border-collapse:collapse; font-size:13px; } .board td { padding:4px 6px; border-top:1px solid var(--line); vertical-align:top; }
+.board .end td { color: var(--acc); font-weight:700; letter-spacing:1px; border-top:0; } .badge { display:inline-block; font-size:11px; border-radius:10px; padding:1px 7px; margin:1px 2px; background:#2a2140; }
+.badge.good { background:#3b2a10; color:#ffc93c; } .badge.bad { background:#2a1620; color:#ff7a9a; } .board .gap td { text-align:center; color:var(--muted); }
+.hunger { height:6px; border-radius:4px; background:#2a2140; overflow:hidden; margin:3px 0; } .hunger i { display:block; height:100%; background:linear-gradient(90deg,#ff4d4d,#ffc93c,#4fd18b); }
 .reveal .box { background: var(--panel); border:1px solid var(--line); border-radius: 18px; padding: 22px; text-align:center; max-width: 380px; width:100%; }
 .reveal canvas { width: 240px; height: 240px; margin: 8px auto; }
 .mystery { display:flex; gap:14px; align-items:center; }
@@ -108,6 +112,13 @@ table.log code { font-size: 12px; }
     <div class="row" style="margin-top:8px"><input class="amt" id="sharedAmt" type="number" min="7" step="1" value="690" aria-label="Shared pet feed amount">
       <button class="btn" id="sharedFeed">Feed the shared pet</button> <span class="muted small">tag <code>pet:feed</code>, 7 min</span></div>
     <div class="msg" id="sharedMsg" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="boardPanel">
+    <h2>WAGMI to NGMI <span class="muted small">(one power ranking of your pets in this browser; cosmetic only)</span></h2>
+    <p class="muted small">Top = WAGMI: pets on a feeding streak, by streak score (each consecutive fed day = 1, a full 3/3 day = 1.5). Middle: pets with no streak yet. Bottom = NGMI: neglected pets (2+ days since the last meal), the most neglected dead last. One feed clears neglect.</p>
+    <div id="board"></div>
+    <button class="q" id="boardAll" style="display:none"></button>
   </section>
 
   <section class="panel">

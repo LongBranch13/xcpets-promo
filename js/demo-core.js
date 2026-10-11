@@ -190,6 +190,7 @@
     var st = this.state(), entry = null, i;
     for (i = 0; i < st.log.length; i++) if (st.log[i].tx_hash === tx) entry = st.log[i];
     var pid = entry && entry.petId, pp = pid ? st.byId[pid] : null, after = pp ? pp.stage : 0, drop = null;
+    if (entry && entry.kind === 'hatch' && pid) (this.s.lastFed = this.s.lastFed || {})[pid] = +this.now();
     if (pid && !pp) pid = null;
     var chance = (pid && after > before) ? DROP.stageUp : ((pid && /^pet:feed:/.test(tag) && amount >= DROP.bigFeedMin) ? DROP.bigFeed : 0);
     if (chance && this.rand() < chance) { this.s.tokens = (this.s.tokens || 0) + 1; drop = { token: true }; this.s.drops.push({ token: true, tx: tx }); }
@@ -223,8 +224,10 @@
     if (used >= FEEDS_PER_DAY) err('Fed ' + FEEDS_PER_DAY + '/' + FEEDS_PER_DAY + ' today, back tomorrow.');
     if (Number(amount) < DEMO_COSTS.feedPet) err('Feeding needs at least ' + DEMO_COSTS.feedPet + ' play XCPETS.');
     (this.s.feedDays = this.s.feedDays || {})[id] = { day: today, n: used + 1 }; // saved by burn() in the same write
+    var log = ((this.s.feedLog = this.s.feedLog || {})[id] = this.s.feedLog[id] || {}), prevLog = log[today], prevLast = (this.s.lastFed = this.s.lastFed || {})[id];
+    log[today] = used + 1; this.s.lastFed[id] = +this.now();
     var r;
-    try { r = this.burn(amount, 'pet:feed:' + id, id); } catch (e) { this.s.feedDays[id] = { day: today, n: used }; throw e; }
+    try { r = this.burn(amount, 'pet:feed:' + id, id); } catch (e) { this.s.feedDays[id] = { day: today, n: used }; if (prevLog) log[today] = prevLog; else delete log[today]; this.s.lastFed[id] = prevLast; throw e; }
     r.state.byId[id].feedsToday = used + 1;
     return { pet: r.state.byId[id], entry: r.entry, drop: r.drop };
   };
@@ -251,7 +254,8 @@
     this.s.tokens = (this.s.tokens || 0) + tokens;
     var st = this.state(), byTx = {};
     st.pets.forEach(function (p) { byTx[p.hatchTx] = p; });
-    var pets = txs.map(function (t) { return byTx[t]; }).filter(Boolean);
+    var pets = txs.map(function (t) { return byTx[t]; }).filter(Boolean), lf = (this.s.lastFed = this.s.lastFed || {}), nowMs = +this.now();
+    pets.forEach(function (p) { lf[p.id] = nowMs; });
     (this.s.batches = this.s.batches || []).push({ kind: kind, ids: pets.map(function (p) { return p.id; }) });
     this.save();
     return { pets: pets, tokens: tokens, batch: this.s.batches.length - 1, paid: b.price };
@@ -263,6 +267,65 @@
     ids.forEach(function (id) { if (live[id] && rel.indexOf(id) < 0) { rel.push(id); delete self.s.equip[id]; } });
     this.save();
   };
+
+  // ---------------------------------------------------------------- WAGMI to NGMI power ranking (cosmetic only)
+  var DAY = 86400000;
+  var SHITPOSTS = ['found a suspicious hat', 'argued with a pigeon', 'declared itself a final boss', 'started a thread about its feeding schedule',
+    'tried to trade its own tail on the DEX', 'subtweeted the shared pet', 'mistook a chart for a snack', 'held an AMA nobody asked for'];
+  var ROASTS = ['{n} has been fed less often than a dead memecoin', '{n} called the top and then fell asleep', '{n}\'s streak is a rug pull',
+    '{n} is down bad and eating air', '{n} thinks "gm" counts as a meal'];
+  function midnight(t) { var d = new Date(t); d.setHours(0, 0, 0, 0); return d; }
+  function dayDiff(a, b) { return Math.round((midnight(a) - midnight(b)) / DAY); } // calendar days (DST-safe rounding)
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  /** Status of one pet: streak (consecutive fed days ending today, or yesterday if not fed yet today; a full 3/3 day counts 1.5),
+   *  days since the last meal (a hatch counts as the first meal), hunger 1 -> 0 over 24 h since the last meal. */
+  Demo.prototype.petStatus = function (p) {
+    var now = +this.now(), log = (this.s.feedLog || {})[p.id] || {}, last = (this.s.lastFed || {})[p.id], d, k, days = 0, score = 0;
+    if (last == null) last = now;
+    for (d = log[dayKey(new Date(now))] ? 0 : 1; d < 3660; d++) {
+      var t = new Date(now); t.setDate(t.getDate() - d); k = dayKey(t);
+      if (!log[k]) break;
+      days++; score += log[k] >= FEEDS_PER_DAY ? 1.5 : 1;
+    }
+    var since = dayDiff(now, last), kind = days > 0 ? 'streak' : (since >= 2 ? 'neglected' : 'neutral');
+    return { streakDays: days, score: score, daysSince: since, lastFed: last, kind: kind, hunger: Math.max(0, Math.min(1, 1 - (now - last) / DAY)) };
+  };
+  Demo.BADGES = {
+    'Legendary drip': 'Legendary pet, or 3+ Rare/Legendary gear items equipped',
+    'Fire takes': 'streak of 7+ days', 'Roast mode': 'streak of 3+ days (roasts another pet in this browser by name)',
+    'Shitpost encounters': '2 days since the last meal', 'Flop era': '3-6 days since the last meal', 'Cursed tweet thread': '7+ days since the last meal'
+  };
+  /** One ranking, WAGMI (top) to NGMI (bottom): streaks by score (desc), then neutral pets, then neglected pets by days since
+   *  the last meal (asc), so the most neglected pet is dead last. */
+  Demo.prototype.leaderboard = function (st) {
+    st = st || this.state();
+    var self = this, today = dayKey(this.now());
+    var rows = st.pets.map(function (p) {
+      var x = self.petStatus(p), badges = [], flavor = null, eq = p.slots.concat(p.bonusSlots).filter(function (sl) { return sl.unlocked && sl.item && sl.item.tier >= 2; }).length;
+      if (p.art.tierIndex === 3 || eq >= 3) badges.push('Legendary drip');
+      if (x.streakDays >= 7) badges.push('Fire takes');
+      if (x.streakDays >= 3) badges.push('Roast mode');
+      if (x.kind === 'neglected') badges.push(x.daysSince >= 7 ? 'Cursed tweet thread' : x.daysSince >= 3 ? 'Flop era' : 'Shitpost encounters');
+      if (badges.indexOf('Shitpost encounters') >= 0) flavor = p.art.defaultName + ' ' + SHITPOSTS[hash(p.id + ':' + today) % SHITPOSTS.length] + '.';
+      return { id: p.id, name: p.art.defaultName, species: p.art.species, tier: p.art.tierIndex, stage: p.stageName, status: x, badges: badges, flavor: flavor };
+    });
+    var grp = { streak: 0, neutral: 1, neglected: 2 };
+    rows.sort(function (a, b) {
+      var g = grp[a.status.kind] - grp[b.status.kind];
+      if (g) return g;
+      if (a.status.kind === 'streak') return b.status.score - a.status.score || b.status.streakDays - a.status.streakDays || a.id - b.id;
+      if (a.status.kind === 'neglected') return a.status.daysSince - b.status.daysSince || a.id - b.id;
+      return a.id - b.id;
+    });
+    // Roast mode: roast another pet by name (the lowest-ranked other pet; rotates templates by day)
+    rows.forEach(function (r) {
+      if (r.badges.indexOf('Roast mode') < 0) return;
+      for (var i = rows.length - 1; i >= 0; i--) if (rows[i].id !== r.id) { r.roast = r.name + ': "' + ROASTS[hash(r.id + ':' + today) % ROASTS.length].replace('{n}', rows[i].name) + '"'; break; }
+    });
+    rows.forEach(function (r, i) { r.rank = i + 1; });
+    return rows;
+  };
+  Demo.SHITPOSTS = SHITPOSTS; Demo.ROASTS = ROASTS;
 
   /** Plain feed of the shared pet (tag pet:feed, real-game feed minimum). No loot. */
   Demo.prototype.feedShared = function (amount) {
@@ -301,7 +364,7 @@
 
   /** Full game state from the real indexer logic, plus art, progress, slots and equipped loot for each pet. */
   Demo.prototype.state = function () {
-    var today = dayKey(this.now()), st = GameCore.buildState(this.s.rows, RULES), T = DEMO_THRESHOLDS, bh = this.s.blockHashes, s = this.s, rel = s.released || [];
+    var self0 = this, today = dayKey(this.now()), st = GameCore.buildState(this.s.rows, RULES), T = DEMO_THRESHOLDS, bh = this.s.blockHashes, s = this.s, rel = s.released || [];
     st.pets = st.pets.filter(function (p) { return rel.indexOf(p.id) < 0; });
     st.byId = {};
     st.pets.forEach(function (p) {
@@ -312,6 +375,8 @@
       p.canEvolve = !p.ascended && p.stage === 4;
       st.byId[p.id] = p;
       var fd = (s.feedDays || {})[p.id]; p.feedsToday = fd && fd.day === today ? fd.n : 0; p.feedLimit = FEEDS_PER_DAY;
+      var lfm = (s.lastFed || {})[p.id]; if (lfm == null) { (s.lastFed = s.lastFed || {})[p.id] = +self0.now(); } // older saves: start the clock now
+      p.hunger = Math.max(0, Math.min(1, 1 - (+self0.now() - s.lastFed[p.id]) / 86400000));
       var eq = s.equip[p.id] || {};
       p.slots = SLOTS.map(function (slot, k) { var it = eq[slot] != null ? item(s, eq[slot]) : null; return { slot: slot, unlocked: k < p.stage, unlockStage: k + 1, item: it }; });
       var nb = (s.bonus || {})[p.id] || 0;

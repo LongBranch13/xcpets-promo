@@ -62,6 +62,7 @@
     $('sharedBar').style.width = Math.round(sh.progress * 100) + '%';
     $('sharedTxt').textContent = 'Stage ' + sh.stageName + ' · ' + fmt(sh.burned) + ' play XCPETS burned in total' +
       (sh.next == null ? ' · fully grown' : ' · ' + fmt(sh.next - sh.burned) + ' to the next stage');
+    renderBoard(st);
     $('log').innerHTML = st.log.slice(-50).reverse().map(function (l, i) {
       return '<tr><td>' + (st.log.length - i) + '</td><td><code>' + esc(l.tag || '(none)') + '</code></td><td>' + fmt(l.amount) + '</td><td>' + esc(l.msg) + '</td></tr>';
     }).join('');
@@ -106,7 +107,8 @@
       '<div>' + esc(speciesLabel(p.art.species)) + ' <span class="pill tier tier-' + t.id + '">' + t.label + '</span></div>' +
       '<div class="small">Stage: <b class="stg">' + p.stageName + '</b> · care <b class="care">' + fmt(p.care) + '</b></div>' +
       '<div class="bar" aria-label="progress to next stage"><i style="width:' + Math.round(p.progress * 100) + '%"></i></div>' +
-      '<div class="small next">' + nextLine(p) + '</div></div></div>' +
+      '<div class="small next">' + nextLine(p) + '</div>' +
+      '<div class="small muted">Hunger ' + Math.round(p.hunger * 100) + '% <span class="muted">(drains over 24 h since the last meal; cosmetic)</span></div><div class="hunger" aria-label="hunger meter"><i style="width:' + Math.round(p.hunger * 100) + '%"></i></div></div></div>' +
       lootLine(p) +
       '<div class="gear"><b>Gear slots</b> <span class="muted">(stages unlock slots; pick one and Roll, or equip from your inventory)</span>' + slotsHtml(p, inv, st) + '</div>' +
       (p.ascended ? '' : '<div class="small feeds' + (fedOut ? ' err' : '') + '">' + (fedOut ? '<b>Fed ' + p.feedLimit + '/' + p.feedLimit + ' today, back tomorrow</b> (resets at local midnight)' : 'Feeds today: ' + p.feedsToday + '/' + p.feedLimit) + '</div>' +
@@ -155,6 +157,23 @@
     return r;
   }
   $('hatch').onclick = doHatch;
+  var boardAll = false, GOOD = { 'Legendary drip': 1, 'Fire takes': 1, 'Roast mode': 1 };
+  function renderBoard(st) {
+    var rows = demo.leaderboard(st), show = rows, cut = !boardAll && rows.length > 20;
+    if (cut) show = rows.slice(0, 10).concat([null], rows.slice(-10));
+    function row(r) {
+      var s = r.status, info = s.kind === 'streak' ? s.streakDays + '-day streak (score ' + s.score + ')' : s.kind === 'neglected' ? s.daysSince + ' days since last meal' : 'no streak yet';
+      return '<tr><td>#' + r.rank + '</td><td><b>' + esc(r.name) + '</b> <span class="muted">#' + r.id + ' · ' + esc(speciesLabel(r.species)) + ' · ' + PetCore.TIERS[r.tier].label + ' · ' + r.stage + '</span>' +
+        (r.flavor ? '<div class="small muted">' + esc(r.flavor) + '</div>' : '') + (r.roast ? '<div class="small">🔥 ' + esc(r.roast) + '</div>' : '') + '</td><td>' + info + '</td><td>' +
+        r.badges.map(function (b) { return '<span class="badge ' + (GOOD[b] ? 'good' : 'bad') + '" title="' + esc(DemoCore.BADGES[b]) + '">' + b + '</span>'; }).join('') + '</td></tr>';
+    }
+    $('board').innerHTML = rows.length ? '<table class="board"><tr class="end"><td colspan="4">WAGMI</td></tr>' +
+      show.map(function (r) { return r ? row(r) : '<tr class="gap"><td colspan="4">… ' + (rows.length - 20) + ' more …</td></tr>'; }).join('') +
+      '<tr class="end"><td colspan="4">NGMI</td></tr></table>' : '<p class="muted small">Hatch a pet to join the ranking.</p>';
+    var b = $('boardAll'); b.style.display = rows.length > 20 ? '' : 'none'; b.textContent = boardAll ? 'Show top 10 and bottom 10' : 'Show all ' + rows.length;
+  }
+  $('boardAll').onclick = function () { boardAll = !boardAll; render(); };
+  setInterval(function () { if (!document.hidden) document.querySelectorAll('.hunger').length && render(); }, 600000); // hunger drains; refresh every 10 min
   var PAGE = 12, page = 0, lastBatch = null;
   $('fTier').onchange = $('fSort').onchange = function () { page = 0; render(); };
   $('pgPrev').onclick = function () { page = Math.max(0, page - 1); render(); };
