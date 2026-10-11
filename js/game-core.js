@@ -21,9 +21,9 @@
   var STAGE_NAMES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
 
   // Community pet growing name (COMMUNITY_PET.md §2). Elder = COMMUNITY_THRESHOLDS[4].
-  // COMMUNITY_QUEST_END is the user's stated target; PENDING CONFIRMATION: it exceeds the 100M total supply.
-  var COMMUNITY_QUEST_END = 135000000;
-  var COMMUNITY_NAMES = ['Sat', '???', '???'];
+  // COMMUNITY_QUEST_END: total burned that completes The Return quest.
+  var COMMUNITY_QUEST_END = 69000000;
+  var COMMUNITY_NAMES = ['???', '???', '???'];
   function communityName(burned) {
     var b = Number(burned) || 0;
     if (b >= COMMUNITY_QUEST_END) return COMMUNITY_NAMES[2];
