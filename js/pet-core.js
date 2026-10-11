@@ -18,7 +18,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSION = 'xcpets-pet-core/3.13.0-promo';
+  var VERSION = 'xcpets-pet-core/3.14.0-promo';
   var N = 32;
 
   // ------------------------------------------------------------------ SHA-256
@@ -252,6 +252,7 @@
       pose: { col: 2, row: 17, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
       arc: [['Sad', 'base', 'keep', 'base'], ['Doubtful', 'halflid', 'keep', 'flat'], ['Calm', 'base', 'none', 'flat'],
         ['Hopeful', 'base', 'raised', 'smile'], ['Enlightened', 'closed', 'none', 'smile']],
+      tearDrop: { 5: 2 }, // v3.14: at Mythic the tear sits on the cheek, two rows below the closed eye
       // classic Wojak: tall oval bald head, moderate brow area with forehead creases, eyes at mid-height looking aside,
       // eyes = white sclera + dark pupil with an ink upper lid (eyeLid) so the whites read on pale skin
       map: [
@@ -315,7 +316,7 @@
       gear: { armor: [18, 21, 1], band: 3, scarf: 16, cape: 17 },
       pose: { col: 2, row: 15, map: ['.kkkkk.', 'klllllk', 'klllllk', 'kkkkllk', '.klllk.', '.kaak..', 'kaak...'] },
       arc: [['Gloomy', 'base', 'keep', 'base'], ['Grumpy', 'base', 'angry', 'frown'], ['Steady', 'base', 'keep', 'flat'],
-        ['Cheerful', 'base', 'raised', 'smile'], ['Jolly', 'closed', 'none', 'cheer']],
+        ['Cheerful', 'base', 'raised', 'smile'], ['Jolly', 'base', 'none', 'cheer']], // v3.14: Mythic keeps the smug open eyes,
       // Bitcoin-Stamp-style bear: big square head, round ears (tan insides), dark muzzle block + black nose,
       // Pepe-style heavy, half-lidded smug eyes (ink lid, whites, pupils to one side), red shirt.
       // Black pixel shades are an occasional accessory (~25%, see shades / render); off at Mythic.
@@ -406,7 +407,7 @@
         '..a.a.a..........a.a.a..'
       ] },
     { id: 'dodo', label: 'Dodo', w: 10, t: 3, canon: { body: '#2a2a2a', accent: '#b40000', belly: '#4a4a4a' },
-      colors: { '5': '#6b6b6b', '6': '#7a0000', '7': { from: 'accent', light: 0.45 } }, outline: '#111111', eyeWhite: '#ffffff', eyeSplit: 15,
+      colors: { '5': '#6b6b6b', '6': '#7a0000', '7': { from: 'accent', light: 0.45 } }, outline: '#111111', eyeWhite: '#ffffff', eyeSplit: 14,
       gear: { armor: [14, 17, 8], cape: 12, capeHalf: 9, band: 1, scarf: 9, crownCol: 16 },
       pose: { col: 16, row: 8, map: ['.kkkkk.', 'k55555k', 'k55555k', 'kkkk55k', '.k55k..', 'k55k...'] },
       // v3.10: Determined keeps the eyes open (the 2-px eyes are 1 px at Adult scale, so a half lid would erase them) and Serene
@@ -420,15 +421,17 @@
       // v3.11: bigger head (rows 0-8, 15 px wide; the neck is one row shorter so body/gear rows are unchanged), eyes moved up
       // two rows, and a bolder full-length beak: light-red top highlight ('7' = accent lightened), red upper bill, ink smirk
       // line, red lower bill with a dark-red ('6') underside. Headband moved up to row 1 so it never covers the lids.
+      // v3.14: rounder head (stepped crown, one column wider on the left), grey lids cut to 2 px per eye (over the pupil side),
+      // and the eyes spaced 3 px apart instead of 2 (eyeSplit 14).
       map: [
-        '...........bbbbbbbb.......',
-        '.........bbbbbbbbbbbb.....',
-        '........bb5555bb5555bb....',
-        '........bbEEPEbbEEPEbb7777',
-        '........bbEEPEbbEEPEbaaaaa',
-        '........bbaaaabbaaaaaaaaa7',
-        '.........bbbbbbbbbmmmmmmmm',
-        '..........bbbbbbbaaaaaaa6.',
+        '...........bbbbbbb........',
+        '.........bbbbbbbbbbb......',
+        '........bb55bbbbb55bbb....',
+        '.......bbEEPEbbbEEPEbb7777',
+        '.......bbEEPEbbbEEPEbaaaaa',
+        '.......bbaaaabbbaaaaaaaaa7',
+        '........bbbbbbbbbbmmmmmmmm',
+        '.........bbbbbbbbaaaaaaa6.',
         '...........bbbbbb666666...',
         '............bbbbb.........',
         '............bbbb..........',
@@ -927,9 +930,10 @@
       placeSprite(cv, sp, box);
       a = anchors(cv, box);
       eyes0 = a.eyes.slice(); // eye boxes before expressions (glasses keep their place when eyes close)
-      applyPattern(cv, pet, a, digest);
+      applyPattern(cv, pet, a, digest, bob);
       if (gear.armor) drawArmor(cv, sp, box, a);
       applyExpression(cv, sp, a, stage);
+      if (sp.tearDrop && sp.tearDrop[stage]) dropTears(cv, sp.tearDrop[stage]);
       a = anchors(cv, box);
       applyEyeTrait(cv, pet, a);
       if (sp.eyeLid) {
@@ -938,7 +942,7 @@
         else drawEyeLids(cv, a);
       }
       // Chud: clear eyeglasses are part of the base look (not a trait) and stay on at every stage, Mythic included
-      if (sp.glasses) drawGlasses(cv, eyes0);
+      if (sp.glasses) { drawGlasses(cv, eyes0); levelEyesInGlasses(cv, eyes0); }
       if (sp.shades && hasShades(pet, sp, stage)) drawShades(cv, a);
       if (gear.band) drawBand(cv, pet, sp, box, a);
       // Mythic only: the smug hand-to-chin thinking pose (drawn over armor/band; weapons stay on the other side)
@@ -1007,8 +1011,10 @@
     if (frame >= 2) for (var c = 0; c < crack.length; c++) cv.paint(cx + crack[c][0], crack[c][1], INK);
   }
 
-  function applyPattern(cv, pet, a, digest) {
-    var x, y, i, k, cy = a.cy, rx = a.rx, ry = a.ry, f = a.face;
+  /** bob = this frame's bounce offset (0 or -1). Canvas-anchored patterns use the sprite-relative row (y - bob) so
+   *  they move with the pet; otherwise the bounce frames re-roll the galaxy speckles / shift the checker under it. */
+  function applyPattern(cv, pet, a, digest, bob) {
+    var x, y, i, k, ys, cy = a.cy, rx = a.rx, ry = a.ry, f = a.face;
     function inFace(x2, y2) { return f && x2 >= f.minX - 1 && x2 <= f.maxX + 1 && y2 >= f.minY - 1 && y2 <= f.maxY + 1; }
     function isBody(x2, y2) { return cv.key[y2 * N + x2] === 'body' && !inFace(x2, y2); }
     switch (pet.pattern) {
@@ -1029,15 +1035,16 @@
         for (y = a.eyeY - 1; y <= a.eyeY + 1; y++) for (x = 0; x < N; x++) if (y >= 0 && cv.key[y * N + x] === 'body') cv.key[y * N + x] = 'accent';
         break;
       case 'checker':
-        for (y = 0; y < N; y++) for (x = 0; x < N; x++) if (isBody(x, y) && ((x >> 1) + (y >> 1)) % 2 === 0) cv.key[y * N + x] = 'accent';
+        for (y = 0; y < N; y++) for (x = 0; x < N; x++) if (isBody(x, y) && ((x >> 1) + ((y - (bob || 0)) >> 1)) % 2 === 0) cv.key[y * N + x] = 'accent';
         break;
       case 'twotone':
         for (y = 0; y < N; y++) for (x = 0; x < N; x++) if (isBody(x, y) && x >= 16) cv.key[y * N + x] = 'belly';
         break;
       case 'galaxy':
         for (y = 0; y < N; y++) for (x = 0; x < N; x++) if (isBody(x, y)) {
-          k = digest[(x * 7 + y * 13) % 32];
-          cv.key[y * N + x] = (k % 11 === 0) ? 'galstar' : ((x + y) % 5 === 0 ? 'accent' : 'gal');
+          ys = y - (bob || 0);
+          k = digest[(x * 7 + ys * 13) % 32];
+          cv.key[y * N + x] = (k % 11 === 0) ? 'galstar' : ((x + ys) % 5 === 0 ? 'accent' : 'gal');
         }
         break;
       case 'rainbow':
@@ -1048,6 +1055,17 @@
   }
 
   // ------------------------------------------------------------- Expression
+  /** Move every tear pixel down by d rows onto the cheek (only onto plain body pixels); the old spot gets the skin back. */
+  function dropTears(cv, d) {
+    var moved = [], i;
+    for (i = 0; i < N * N; i++) if (cv.key[i] === 'tear') moved.push(i);
+    moved.forEach(function (i0) {
+      var x = i0 % N, y = Math.floor(i0 / N);
+      var t = cv.getKey(x, y + d);
+      cv.key[i0] = fillKeyNear(cv, x + 1, y);
+      if (t && !FACE_KEYS[t] && t !== 'outline') cv.key[(y + d) * N + x] = 'tear';
+    });
+  }
   function fillKeyNear(cv, x, y) {
     var cand = [cv.getKey(x, y)];
     for (var i = 0; i < cand.length; i++) { var k = cand[i]; if (k && !FACE_KEYS[k]) return k; }
@@ -1132,6 +1150,21 @@
     for (x = L.maxX + 2; x <= R.minX - 2; x++) cv.setKey(x, L.minY, 'frame');
     for (x = L.minX - 2; x >= L.minX - 4 && cv.isSil(x, L.minY - 1); x--) cv.setKey(x, L.minY - 1, 'frame');
     for (x = R.maxX + 2; x <= R.maxX + 4 && cv.isSil(x, R.minY - 1); x++) cv.setKey(x, R.minY - 1, 'frame');
+  }
+  /** v3.14: after scaling + expressions one eye behind the glasses can lose its pupil and end up as a 2-px white blob
+   *  stuck in the top corner of its lens (Chud Adult). If exactly one lens has no pupil and both lens interiors are the
+   *  same size, redraw it with the other lens's eye (lid / white / pupil rows), so both eyes sit level and centred. */
+  function levelEyesInGlasses(cv, eyes) {
+    if (eyes.length < 2) return;
+    var lens = eyes.map(function (b) {
+      var x0 = b.minX - 1, x1 = Math.max(b.maxX + 1, b.minX + 3), y0 = b.minY - 1, y1 = Math.max(b.maxY + 1, b.minY + 2), pupil = false, x, y;
+      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) if (cv.getKey(x, y) === 'pupil') pupil = true;
+      return { x0: x0 + 1, y0: y0 + 1, w: x1 - x0 - 1, h: y1 - y0 - 1, pupil: pupil };
+    });
+    var A = lens[0], B = lens[1];
+    if (A.pupil === B.pupil || A.w !== B.w || A.h !== B.h) return;
+    var src = A.pupil ? A : B, dst = A.pupil ? B : A, x, y;
+    for (y = 0; y < src.h; y++) for (x = 0; x < src.w; x++) cv.setKey(dst.x0 + x, dst.y0 + y, cv.getKey(src.x0 + x, src.y0 + y));
   }
   /** Thin ink upper lid over each still-open eye (species with eyeLid: true). */
   function drawEyeLids(cv, a) {
