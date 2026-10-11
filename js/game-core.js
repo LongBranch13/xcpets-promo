@@ -94,6 +94,10 @@
     var costs = {}, k;
     for (k in COSTS) costs[k] = COSTS[k];
     if (opts.costs) for (k in opts.costs) costs[k] = opts.costs[k];
+    // opts.petThresholds: cumulative care per stage [Egg..Mythic] (default = the real game's PET_THRESHOLDS; the play demo passes its own)
+    var T = opts.petThresholds || PET_THRESHOLDS;
+    // opts.communityThresholds: cumulative burns per shared-pet stage (default COMMUNITY_THRESHOLDS); it always ascends on its own
+    var CT = opts.communityThresholds || COMMUNITY_THRESHOLDS;
     var unit = opts.divisible === false ? 1 : UNIT;
     var seen = {}, pets = [], byOwner = {}, burners = {}, log = [];
     var community = { burned: 0, burns: 0, feeds: 0, feeders: {} };
@@ -164,7 +168,7 @@
           if (pet.ascended) return { ok: false, msg: 'already Mythic', petId: pet.id };
           if (amt < costs.evolve) return { ok: false, msg: 'below evolve cost', petId: pet.id };
           pet.care += amt;
-          if (pet.care < PET_THRESHOLDS[5]) return { ok: false, msg: 'care below Mythic threshold (burn still added as care)', petId: pet.id };
+          if (pet.care < T[5]) return { ok: false, msg: 'care below Mythic threshold (burn still added as care)', petId: pet.id };
           pet.ascended = true;
           return { ok: true, msg: 'pet #' + pet.id + ' ascended to Mythic', petId: pet.id };
       }
@@ -172,13 +176,13 @@
     }
 
     if (opts.ownerOf) for (i = 0; i < pets.length; i++) pets[i].holder = ownerOf(pets[i], null);
-    for (i = 0; i < pets.length; i++) { pets[i].stage = stageFor(pets[i].care, PET_THRESHOLDS, pets[i].ascended); pets[i].stageName = STAGE_NAMES[pets[i].stage]; }
-    community.stage = stageFor(community.burned, COMMUNITY_THRESHOLDS, true);
+    for (i = 0; i < pets.length; i++) { pets[i].stage = stageFor(pets[i].care, T, pets[i].ascended); pets[i].stageName = STAGE_NAMES[pets[i].stage]; }
+    community.stage = stageFor(community.burned, CT, true);
     community.stageName = STAGE_NAMES[community.stage];
-    community.next = community.stage < 5 ? COMMUNITY_THRESHOLDS[community.stage + 1] : null;
+    community.next = community.stage < 5 ? CT[community.stage + 1] : null;
     var burnerList = Object.keys(burners).map(function (a) { return burners[a]; })
       .sort(function (a, b) { return (b.burned - a.burned) || (a.firstBlock - b.firstBlock) || (a.address < b.address ? -1 : 1); });
-    return { community: community, pets: pets, burners: burnerList, log: log, costs: costs };
+    return { community: community, pets: pets, burners: burnerList, log: log, costs: costs, petThresholds: T, communityThresholds: CT };
   }
 
   return {

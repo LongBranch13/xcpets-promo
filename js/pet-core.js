@@ -720,9 +720,12 @@
   }
 
   /** Gear ranks visible at a stage: rank n unlocks at stage n, capped by the tier's gearSlots. */
-  function gearFor(pet, stage) {
+  // opts.gearCap (optional, render-time only): override the tier's gear-slot cap (the play demo passes 5 so every tier can
+  // wear the full kit; the rolled variants still come from the tier-weighted rolls). Default = the real tier cap.
+  function gearFor(pet, stage, opts) {
     stage = clampStage(stage);
-    var n = Math.min(stage, (TIERS[pet.tierIndex] || TIERS[0]).gearSlots);
+    var cap = (opts && opts.gearCap != null) ? opts.gearCap : (TIERS[pet.tierIndex] || TIERS[0]).gearSlots;
+    var n = Math.min(stage, cap, GEAR_RANKS.length);
     return GEAR_RANKS.slice(0, n);
   }
   function expressionFor(pet, stage) {
@@ -912,6 +915,11 @@
   function render(pet, opts) {
     opts = opts || {};
     var stage = clampStage(opts.stage == null ? 3 : opts.stage), frame = (opts.frame || 0) % 4;
+    // opts.gearOverride (optional, render-time only; used by the play demo's loot): { band: id, armor: id, ... }. When given,
+    // exactly these slots are worn with these variant ids (unknown ids are ignored) instead of the rolled kit and tier/stage
+    // caps. Default (no option): unchanged real-game behaviour.
+    var go = opts.gearOverride, LISTS = { band: BANDS, armor: ARMORS, cape: CAPES, weapon: WEAPONS, crown: CROWNS };
+    if (go) { pet = Object.assign({}, pet); for (var gk in LISTS) if (go[gk] && byId(LISTS[gk], go[gk])) pet[gk] = go[gk]; }
     var cv = new Canvas(), digest = hexToBytes(pet.dna);
     var pal = paletteColors(pet);
     drawBackground(cv, pet, digest, frame, pal);
@@ -922,7 +930,8 @@
       eggSp = byId(SPECIES, pet.species);
       if (!(eggSp && eggSp.egg)) eggSp = null; // species egg = shell/spot recolour
     } else {
-      gearFor(pet, stage).forEach(function (g) { gear[g] = true; });
+      if (go) { for (var gs in LISTS) if (go[gs] && byId(LISTS[gs], go[gs])) gear[gs] = true; }
+      else gearFor(pet, stage, opts).forEach(function (g) { gear[g] = true; });
       var sp = byId(SPECIES, pet.species) || SPECIES[0];
       var box = spriteBox(sp, stage, bob);
       shadow(cv, 16, box.w * 0.42 + (gear.cape ? 1 : 0), 29);
@@ -1292,7 +1301,7 @@
   function renderFrames(pet, opts) {
     opts = opts || {};
     var frames = [];
-    for (var f = 0; f < (opts.frames || 4); f++) frames.push(render(pet, { stage: opts.stage, frame: f }));
+    for (var f = 0; f < (opts.frames || 4); f++) frames.push(render(pet, { stage: opts.stage, frame: f, gearCap: opts.gearCap, gearOverride: opts.gearOverride }));
     return frames;
   }
 
